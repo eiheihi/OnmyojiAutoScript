@@ -82,40 +82,87 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RealmRaidAssets):
                 break
         logger.info(f'Click {self.I_FIRE.name}')
 
-    def execute_round(self, config: RealmRaid) -> bool:
+    # def execute_round(self, config: RealmRaid) -> bool:
+    #     """
+    #     执行一轮 除非票不够，一直到到九次
+    #     :return:
+    #     """
+    #     # 如果没有票了，就退出
+    #     if not self.is_ticket():
+    #         return False
+    # 
+    #     # 判断是退四打九还是全部打
+    #     if config.raid_config.raid_mode == RaidMode.NORMAL:
+    #         logger.info(f'Execute round, retreat four attack nine')
+    #         self.medal_fire()
+    #         self.run_general_battle_back(config.general_battle_config)
+    # 
+    #         self.medal_fire()
+    #         self.run_general_battle_back(config.general_battle_config)
+    # 
+    #         self.medal_fire()
+    #         self.run_general_battle_back(config.general_battle_config)
+    # 
+    #         self.medal_fire()
+    #         self.run_general_battle_back(config.general_battle_config)
+    # 
+    #     # 打九次
+    #     for i in range(9):
+    #         if not self.is_ticket():
+    #             return False
+    #         self.medal_fire()
+    #         self.run_general_battle(config.general_battle_config)
+    #         self.wait_until_appear(self.I_BACK_RED)
+    # 
+    #     return True
+
+    def run_general_battle_back(self) -> bool:
         """
-        执行一轮 除非票不够，一直到到九次
+        进入挑战然后直接返回
+        :param config:
         :return:
         """
-        # 如果没有票了，就退出
-        if not self.is_ticket():
-            return False
+        # 如果没有锁定队伍那么在点击准备后才退出的
+        # if not config.lock_team_enable:
+        #     # 点击准备按钮
+        #     self.wait_until_appear(self.I_PREPARE_HIGHLIGHT)
+        #     while 1:
+        #         self.screenshot()
+        #         if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1.5):
+        #             continue
+        #         if not self.appear(self.I_PRESET):
+        #             break
+        #     logger.info(f"Click {self.I_PREPARE_HIGHLIGHT.name}")
 
-        # 判断是退四打九还是全部打
-        if config.raid_config.raid_mode == RaidMode.NORMAL:
-            logger.info(f'Execute round, retreat four attack nine')
-            self.medal_fire()
-            self.run_general_battle_back(config.general_battle_config)
+        # 点击返回
+        while 1:
+            self.screenshot()
+            if self.appear_then_click(self.I_EXIT, interval=1.5):
+                continue
+            if self.appear(self.I_EXIT_ENSURE):
+                break
+        logger.info(f"Click {self.I_EXIT.name}")
 
-            self.medal_fire()
-            self.run_general_battle_back(config.general_battle_config)
+        # 点击返回确认
+        while 1:
+            self.screenshot()
+            if self.appear_then_click(self.I_EXIT_ENSURE, interval=1.5):
+                continue
+            if self.appear(self.I_FALSE):
+                break
+        logger.info(f"Click {self.I_EXIT_ENSURE.name}")
 
-            self.medal_fire()
-            self.run_general_battle_back(config.general_battle_config)
-
-            self.medal_fire()
-            self.run_general_battle_back(config.general_battle_config)
-
-        # 打九次
-        for i in range(9):
-            if not self.is_ticket():
-                return False
-            self.medal_fire()
-            self.run_general_battle(config.general_battle_config)
-            self.wait_until_appear(self.I_BACK_RED)
+        # 点击失败确认
+        self.wait_until_appear(self.I_FALSE)
+        while 1:
+            self.screenshot()
+            if self.appear_then_click(self.I_FALSE, interval=1.5):
+                continue
+            if not self.appear(self.I_FALSE):
+                break
+        logger.info(f"Click {self.I_FALSE.name}")
 
         return True
-
     # ------------------------------------------------------------------------------------------------------------------
     def run_2(self):
         con = self.config.realm_raid
@@ -184,13 +231,17 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RealmRaidAssets):
                 if con.raid_config.exit_four:
                     logger.info('Exit four enable')
                     self.fire(index)
-                    self.run_general_battle_back(con.general_battle_config)
+                    self.run_general_battle_back()
+
                     self.fire(index)
-                    self.run_general_battle_back(con.general_battle_config)
+                    self.run_general_battle_back()
+
                     self.fire(index)
-                    self.run_general_battle_back(con.general_battle_config)
+                    self.run_general_battle_back()
+
                     self.fire(index)
-                    self.run_general_battle_back(con.general_battle_config)
+                    self.run_general_battle_back()
+
             elif self.check_medal_is_frog(frog, medal, index):
                 # 如果挑战的这只是呱太的话，就要把锁定改为不锁定
                 con.general_battle_config.lock_team_enable = False
@@ -222,7 +273,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RealmRaidAssets):
             if not last_battle and con.raid_config.when_attack_fail == WhenAttackFail.EXIT:
                 logger.info('Battle lost and exit')
                 break
-
 
         self.ui_click(self.I_BACK_RED, self.I_CHECK_EXPLORATION)
         self.ui_get_current_page()
