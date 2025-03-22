@@ -88,19 +88,19 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
 
     def dokan_process(self, cfg: Dokan):
         # 开始道馆流程
-        stuck_timer = Timer(240)
-        stuck_timer.start()
+        logger.info("道馆流程开始")
+
+        scene_stuck_timer = Timer(50)
+        scene_stuck_timer.start()
         swipe_count = 1
-        self.device.stuck_record_clear()
-        self.device.stuck_record_add('BATTLE_STATUS_S')
 
         while 1:
             # 检测当前界面的场景
             in_dokan, current_scene = self.get_current_scene()
 
-            if stuck_timer and stuck_timer.reached():
-                stuck_timer.reset()
-                if swipe_count >= 10:
+            if scene_stuck_timer and scene_stuck_timer.reached():
+                scene_stuck_timer.reset()
+                if swipe_count >= 100:
                     logger.warning(f"道馆流程超时，swipe_count={swipe_count}")
                     self.save_image(save_flag=True)
                     break
@@ -135,7 +135,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
 
                 # 非寮管理，检测到放弃突破，点击同意
                 if self.appear_then_click(self.I_CROWD_QUIT_DOKAN, interval=1):
-                    logger.info("同意，放弃本次道馆")
+                    logger.info("同意, 放弃本次道馆")
                     continue
 
             # 场景状态：检查右下角有没有挑战？通常是失败了，并退出来到集结界面，可重新开始点击右下角挑战进入战斗
@@ -150,7 +150,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 if self.appear_then_click(self.I_QUIT_DOKAN_SURE, interval=1):
                     pass
                 if self.appear_then_click(self.I_CONTINUE_DOKAN, interval=1):
-                    logger.info("再战道馆")
+                    logger.info("点击, 再战道馆")
                     continue
             else:
                 pass
@@ -162,7 +162,10 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         self.device.click_record_clear()
 
         if self.appear(self.I_CONTINUE_DOKAN):
-            logger.info("再战道馆，投票场景")
+            current_scene = DokanScene.RYOU_DOKAN_SCENE_FAILED_VOTE_NO
+            if current_scene != self.last_scene:
+                logger.info(f"再战道馆，投票场景")
+                self.last_scene = current_scene
             return True, DokanScene.RYOU_DOKAN_SCENE_FAILED_VOTE_NO
         # 场景检测：阴阳竂
         if self.appear(self.I_SCENE_RYOU, threshold=0.8):
@@ -195,11 +198,12 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         if self.appear(self.I_RYOU_DOKAN_START_CHALLENGE, 0.95):
             if self.appear_rgb(self.I_RYOU_DOKAN_START_CHALLENGE):
                 logger.info(f"挑战次数已重置")
+                self.appear_then_click(self.I_RYOU_DOKAN_START_CHALLENGE, interval=1)
                 return True, DokanScene.RYOU_DOKAN_SCENE_START_CHALLENGE
             else:
                 current_scene = DokanScene.RYOU_DOKAN_SCENE_GATHERING
                 if current_scene != self.last_scene:
-                    logger.info(f"挑战未就绪")
+                    logger.info(f"道馆集结中,挑战未就绪")
                     self.last_scene = current_scene
                 return True, DokanScene.RYOU_DOKAN_SCENE_GATHERING
 
@@ -259,21 +263,19 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         #     self.team_switched = True
         #     # 切完队伍后有时候会卡顿，先睡一觉，防止快速跳到绿标流程，导致未能成功绿标
 
-        self.device.stuck_record_clear()
-        self.device.stuck_record_add('BATTLE_STATUS_S')
-        stuck_timer = Timer(240)
-        stuck_timer.start()
-        swipe_count = 1
+        battles_stuck_timer = Timer(50)
+        battles_stuck_timer.start()
+        battles_swipe_count = 1
         while 1:
             self.screenshot()
-            # 每280秒重置战斗状态
-            if stuck_timer and stuck_timer.reached():
-                stuck_timer.reset()
-                if swipe_count >= 6:
-                    logger.warning(f"战斗流程超时，swipe_count={swipe_count}")
+            # 重置战斗状态
+            if battles_stuck_timer and battles_stuck_timer.reached():
+                battles_stuck_timer.reset()
+                if battles_swipe_count >= 30:
+                    logger.warning(f"战斗流程超时，swipe_count={battles_swipe_count}")
                     self.save_image(save_flag=True)
                     break
-                swipe_count += 1
+                battles_swipe_count += 1
                 self.device.stuck_record_clear()
                 self.device.stuck_record_add('BATTLE_STATUS_S')
 
@@ -347,25 +349,20 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 return
             # logger.info("Green is enable")
             x, y = None, None
+            # logger.info(f"Green {mark_mode}")
             match mark_mode:
                 case GreenMarkType.GREEN_LEFT1:
                     x, y = self.C_GREEN_LEFT_1.coord()
-                    logger.info("Green left 1")
                 case GreenMarkType.GREEN_LEFT2:
                     x, y = self.C_GREEN_LEFT_2.coord()
-                    logger.info("Green left 2")
                 case GreenMarkType.GREEN_LEFT3:
                     x, y = self.C_GREEN_LEFT_3.coord()
-                    logger.info("Green left 3")
                 case GreenMarkType.GREEN_LEFT4:
                     x, y = self.C_GREEN_LEFT_4.coord()
-                    logger.info("Green left 4")
                 case GreenMarkType.GREEN_LEFT5:
                     x, y = self.C_DOKAN_GREEN_LEFT_5.coord()
-                    logger.info("Green left 5")
                 case GreenMarkType.GREEN_MAIN:
                     x, y = self.C_GREEN_MAIN.coord()
-                    logger.info("Green main")
 
             # 等待那个准备的消失
             while 1:
@@ -380,10 +377,10 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             while 1:
                 self.screenshot()
                 if self.wait_until_appear(self.I_GREEN_MARK, wait_time=1):
-                    logger.info("识别到绿标,返回")
+                    # logger.info("识别到绿标,返回")
                     break
                 if Dokan_timer.reached():
-                    logger.warning("识别绿标超时,返回")
+                    # logger.warning("识别绿标超时,返回")
                     break
                 # 判断有无坐标的偏移
                 # self.appear_then_click(self.I_LOCAL)
@@ -419,7 +416,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             if DOKAN_STATUS_str != '' and DOKAN_STATUS_str is not None:
                 break
 
-        logger.info(DOKAN_STATUS_str)
         if '挑战成功' in DOKAN_STATUS_str or '0次' in DOKAN_STATUS_str:
             self.goto_main()
             self.set_next_run(task='Dokan', finish=True, server=True, success=True)
@@ -462,7 +458,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 x = pos[0] + pos[2] / 2
                 # 往上偏移20
                 y = pos[1] - 20
-                logger.info("ocr detect result pos={pos}, try click pos, x={x}, y={y}")
+                # logger.info(f"ocr detect result pos={pos}, try click pos, x={x}, y={y}")
                 self.device.click(x=x, y=y)
 
     def is_in_dokan(self):
