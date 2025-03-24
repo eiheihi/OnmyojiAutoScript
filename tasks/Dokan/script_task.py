@@ -121,6 +121,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 # 管理放弃第一次道馆
                 if self.battle_dokan_flag and self.config.dokan.dokan_config.dokan_enable:
                     logger.info("今日第一次道馆，放弃本次道馆")
+                    time.sleep(5)
                     while 1:
                         self.screenshot()
                         if self.appear(self.I_CONTINUE_DOKAN, interval=1):
@@ -199,6 +200,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             if self.appear_rgb(self.I_RYOU_DOKAN_START_CHALLENGE):
                 logger.info(f"挑战次数已重置")
                 self.appear_then_click(self.I_RYOU_DOKAN_START_CHALLENGE, interval=1)
+                time.sleep(1)
                 return True, DokanScene.RYOU_DOKAN_SCENE_START_CHALLENGE
             else:
                 current_scene = DokanScene.RYOU_DOKAN_SCENE_GATHERING
