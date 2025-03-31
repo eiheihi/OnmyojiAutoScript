@@ -81,8 +81,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             self.ui_goto(page_shikigami_records)
             self.run_switch_soul_by_name(cfg.switch_soul_config.group_name, cfg.switch_soul_config.team_name)
 
-        # 进入道馆
-        self.goto_dokan()
         # 开始道馆流程
         self.dokan_process(cfg)
 
@@ -94,8 +92,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         timer_count = 1
 
         while 1:
-            # 检测当前界面的场景
-            in_dokan, current_scene = self.get_current_scene()
 
             if scene_timer and scene_timer.reached():
                 scene_timer.reset()
@@ -107,6 +103,9 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 timer_count += 1
                 self.device.stuck_record_clear()
                 self.device.stuck_record_add('BATTLE_STATUS_S')
+
+            # 检测当前界面的场景
+            in_dokan, current_scene = self.get_current_scene()
 
             # 如果当前不在道馆，或者被人工操作退出道馆了，重新尝试进入道馆
             if not in_dokan:
@@ -139,11 +138,11 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     logger.info("同意, 放弃本次道馆")
                     continue
 
-            # 场景状态：检查右下角有没有挑战？通常是失败了，并退出来到集结界面，可重新开始点击右下角挑战进入战斗
+            # 场景状态：右下角挑战
             elif current_scene == DokanScene.RYOU_DOKAN_SCENE_START_CHALLENGE:
                 self.appear_then_click(self.I_RYOU_DOKAN_START_CHALLENGE, interval=1)
                 time.sleep(1)
-                # # 场景状态：进入战斗，待准备
+            # # 场景状态：进入战斗，待准备
             elif current_scene == DokanScene.RYOU_DOKAN_SCENE_IN_FIELD:
                 # 战斗
                 self.dokan_battle(cfg)
@@ -153,11 +152,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     pass
                 if self.appear_then_click(self.I_CONTINUE_DOKAN, interval=1):
                     logger.info("点击, 再战道馆")
-                    time.sleep(1)
+                    time.sleep(2)
                     continue
-            else:
-                pass
-                # logger.info(f"unknown scene, skipped")
 
     def get_current_scene(self):
         """ 检测当前场景 """
@@ -387,6 +383,18 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         # 进入选择寮界面
         self.ui_get_current_page()
         self.ui_goto(page_guild)
+        
+        # 寮成员先等待30秒
+        if not self.config.dokan.dokan_config.dokan_enable:
+            self.goto_dokan_num += 1
+            wait_time = 30
+            logger.info(f"寮成员第{self.goto_dokan_num}次进入,先等待{wait_time}秒，等待管理开启道馆")
+            time.sleep(wait_time)
+            if self.goto_dokan_num >= 10:
+                logger.info(f"寮成员{self.goto_dokan_num}次未进入道馆结束任务!")
+                self.goto_main()
+                self.set_next_run(task='Dokan', finish=True, server=True, success=True)
+                raise TaskEnd
 
         while 1:
             self.screenshot()
@@ -404,36 +412,25 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
 
         while 1:
             self.screenshot()
-            DOKAN_STATUS_str = self.O_DOKAN_STATUS.detect_text(self.device.image)
-            if DOKAN_STATUS_str != '' and DOKAN_STATUS_str is not None:
+            dokan_status_str = self.O_DOKAN_STATUS.detect_text(self.device.image)
+            if dokan_status_str != '' and dokan_status_str is not None:
                 break
 
-        if '挑战成功' in DOKAN_STATUS_str or '0次' in DOKAN_STATUS_str:
+        if '挑战成功' in dokan_status_str or '0次' in dokan_status_str:
             self.goto_main()
             self.set_next_run(task='Dokan', finish=True, server=True, success=True)
             raise TaskEnd
-        elif '集结中' in DOKAN_STATUS_str:
+        elif '集结中' in dokan_status_str:
+            # 寮成员进入道馆
             self.goto_dokan_click()
-            return True
         else:
-            if '2次' in DOKAN_STATUS_str:
+            if '2次' in dokan_status_str:
                 self.battle_dokan_flag = True
             else:
                 self.battle_dokan_flag = False
             # 管理开道馆
             if self.config.dokan.dokan_config.dokan_enable:
                 self.open_dokan()
-            else:
-                # 寮成员十次未进入道馆结束任务
-                self.goto_dokan_num += 1
-                logger.info(f"寮成员第{self.goto_dokan_num}次进入选择寮界面")
-                time.sleep(20)
-                if self.goto_dokan_num >= 10:
-                    logger.info(f"寮成员{self.goto_dokan_num}次未进入道馆结束任务!")
-                    self.goto_main()
-                    self.set_next_run(task='Dokan', finish=True, server=True, success=True)
-                    raise TaskEnd
-            return False
 
     def goto_dokan_click(self):
         while 1:
@@ -475,8 +472,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 continue
             if self.appear_rgb(self.I_CREATE_DAOGUAN_OK):
                 break
-            # if self.I_CREATE_DAOGUAN_OK.match_mean_color(self.device.image, self.CREATE_DAOGUAN_OK, 10):
-            #     break
             if self.appear_then_click(self.I_CREATE_DAOGUAN, interval=1):
                 continue
 
@@ -498,21 +493,21 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             else:
                 break
 
-        DOKAN_list = [DOKAN_1, DOKAN_2, DOKAN_3, DOKAN_4]
+        dokan_list = [DOKAN_1, DOKAN_2, DOKAN_3, DOKAN_4]
 
         # reverse 可选。布尔值。False 将按升序排序，True 将按降序排序。默认为 False。
-        DOKAN_list_sort = sorted(DOKAN_list, reverse=False)
+        dokan_list_sort = sorted(dokan_list, reverse=False)
 
         # 使用 sorted 函数和 lambda 函数进行排序
-        DOKAN_list_sort = sorted(DOKAN_list, key=lambda x: (x < 550 or x >= 750, x))
+        dokan_list_sort = sorted(dokan_list, key=lambda x: (x < 550 or x >= 750, x))
 
-        DOKAN_click_list = [self.O_DOKAN_READY_SEL1, self.O_DOKAN_READY_SEL2,
+        dokan_click_list = [self.O_DOKAN_READY_SEL1, self.O_DOKAN_READY_SEL2,
                             self.O_DOKAN_READY_SEL3, self.O_DOKAN_READY_SEL4]
 
         while 1:
-            DOKAN_index = DOKAN_list.index(DOKAN_list_sort[num])
+            dokan_index = dokan_list.index(dokan_list_sort[num])
 
-            if self.click(DOKAN_click_list[DOKAN_index], interval=1):
+            if self.click(dokan_click_list[dokan_index], interval=1):
                 if num < 3:
                     num += 1
                 else:
