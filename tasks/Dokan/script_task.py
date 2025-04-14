@@ -480,11 +480,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             DOKAN_3 = self.O_DOKAN_READY_SEL3.ocr_digit(self.device.image)
             DOKAN_4 = self.O_DOKAN_READY_SEL4.ocr_digit(self.device.image)
 
-            if DOKAN_1 == 0 or DOKAN_2 == 0 or DOKAN_3 == 0 or DOKAN_4 == 0:
-                count += 1
-                if count < 5:
-                    continue
-            else:
+            # 只要有一个不为0，立即退出循环
+            if DOKAN_1 != 0 or DOKAN_2 != 0 or DOKAN_3 != 0 or DOKAN_4 != 0:
                 break
 
         dokan_list = [DOKAN_1, DOKAN_2, DOKAN_3, DOKAN_4]
