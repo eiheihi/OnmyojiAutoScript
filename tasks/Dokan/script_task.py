@@ -67,10 +67,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         current_weekday = today.weekday()  # 周一为0，周日为6
         next_run_weekday = 1
         if current_weekday in [4, 5, 6] or (current_weekday == 3 and success):
-            msg = f"设置下周{next_run_weekday}执行道馆"
-            logger.warning(msg)
             self.next_run_week(next_run_weekday)
-            self.push_notify(title=self.config.task.command, content=msg)
             raise TaskEnd
 
     def run(self):
