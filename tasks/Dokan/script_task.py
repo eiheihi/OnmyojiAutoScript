@@ -433,7 +433,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 self.open_dokan()
             else:
                 self.goto_dokan_num += 1
-                wait_time = 20
+                wait_time = 30
                 logger.info(f"寮成员第{self.goto_dokan_num}次进入,等待{wait_time}秒, 管理开启道馆")
                 time.sleep(wait_time)
                 if self.goto_dokan_num >= 10:
@@ -560,9 +560,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     continue
                 p_num = int(tmp.group())
 
-                logger.info(f"==================="
-                            f"资金:{bounty},人数:{p_num},系数:{bounty / p_num:.2f}"
-                            f"===================")
+                logger.hr(f"资金:{bounty},人数:{p_num},系数:{bounty / p_num:.2f}", 2)
 
                 item_score = bounty / p_num
                 if item_score < min_score:
@@ -570,18 +568,20 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     idx_selected = idx
                 # 大于系数 或者 系数过小(文字识别错误导致)
                 if item_score > score or item_score < 1.5:
-                    logger.info("click to making challenge disappear")
+                    logger.warning(f"系数{item_score}大于{score},不符合要求")
                     continue
                 if p_num < self.config.dokan.dokan_config.min_people_num:
-                    logger.info("people num too small")
+                    logger.warning(f"人数{p_num}少于{self.config.dokan.dokan_config.min_people_num},不符合要求")
                     continue
                 if bounty < self.config.dokan.dokan_config.min_bounty:
-                    logger.info("bounty too small")
+                    logger.warning(f"寮资金{bounty}少于{self.config.dokan.dokan_config.min_bounty},不符合要求")
                     continue
                 # 馆主不是修习等级的
                 if not self.appear(self.I_CENTER_GUANZHU_XIUXI):
+                    logger.warning(f"馆主不是修习等级的,不符合要求")
                     continue
-                self.push_notify(f"开启道馆: 资金:{bounty},人数:{p_num},系数:{bounty / p_num:.2f}")
+                logger.info(f"已找到符合要求的道馆")
+                self.push_notify(f"准备开启道馆: 资金:{bounty},人数:{p_num},系数:{bounty / p_num:.2f}")
                 return True
             # 在所有列表中都没有符合的,且忽略系数限制,那么就选择最低分数的那个,点击显示挑战按钮
             if ignore_score:
@@ -594,11 +594,11 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     sleep(0.5)
             return False
 
-        while num_fresh < self.config.dokan.dokan_config.find_dokan_refresh_count:
+        while num_fresh < 5:
             for i in range(3):
                 sleep(3)
                 if find_challengeable():
-                    logger.info("find challengeable dokan")
+                    logger.info("已找到合适的道馆")
                     self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1)
                     self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
                     # 恢复初始位置信息,防止下次使用出错
@@ -609,20 +609,17 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
 
             # 恢复初始位置信息,防止下次使用出错
             restore_roi()
-            logger.info("=========refresh dokan list=========")
+            num_fresh += 1
+            logger.info(f"=========第{num_fresh}次刷新列表=========")
             self.ui_click(self.C_DOKAN_REFRESH, self.I_REFRESH_ENSURE, interval=1)
             self.ui_click_until_disappear(self.I_REFRESH_ENSURE, interval=1)
-
-            logger.info("Refresh Done")
-            num_fresh += 1
+            logger.info("刷新完成")
 
         # 刷新次数用完,仍未找到符合条件的道馆,选择当前列表(约4个)中系数最低的
         if find_challengeable(ignore_score=True):
-            logger.warning("can't find challengeable dokan,select random one")
+            logger.warning("找到符合条件的道馆,选择当前列表中系数最低的")
             self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1)
             self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
-            # 更新可挑战次数
-            self.config.dokan.attack_count_config.del_attack_count(1, self.config.save)
             return True
         return False
 
