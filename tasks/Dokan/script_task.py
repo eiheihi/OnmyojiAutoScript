@@ -53,10 +53,6 @@ class DokanScene(Enum):
 
     # 正在查找道馆,处于地图界面
     RYOU_DOKAN_SCENE_FINDING_DOKAN = 97
-    # 已选择道馆,处于地图界面
-    RYOU_DOKAN_SCENE_FOUND_DOKAN = 98
-    # 道馆结束
-    RYOU_DOKAN_SCENE_FINISHED = 99
 
     def __str__(self):
         return self.name.title()
@@ -83,19 +79,19 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
 
     def run(self):
         # 检查今天周几
-        # self.check_current_weekday()
+        self.check_current_weekday()
 
         cfg: Dokan = self.config.dokan
 
-        # # 自动换御魂
-        # if cfg.switch_soul_config.enable:
-        #     self.ui_get_current_page()
-        #     self.ui_goto(page_shikigami_records)
-        #     self.run_switch_soul(cfg.switch_soul_config.switch_group_team)
-        # if cfg.switch_soul_config.enable_switch_by_name:
-        #     self.ui_get_current_page()
-        #     self.ui_goto(page_shikigami_records)
-        #     self.run_switch_soul_by_name(cfg.switch_soul_config.group_name, cfg.switch_soul_config.team_name)
+        # 自动换御魂
+        if cfg.switch_soul_config.enable:
+            self.ui_get_current_page()
+            self.ui_goto(page_shikigami_records)
+            self.run_switch_soul(cfg.switch_soul_config.switch_group_team)
+        if cfg.switch_soul_config.enable_switch_by_name:
+            self.ui_get_current_page()
+            self.ui_goto(page_shikigami_records)
+            self.run_switch_soul_by_name(cfg.switch_soul_config.group_name, cfg.switch_soul_config.team_name)
 
         # 开始道馆流程
         self.goto_dokan()
@@ -113,9 +109,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             if scene_timer and scene_timer.reached():
                 scene_timer.reset()
                 if timer_count >= 100:
-                    logger.warning(f"道馆流程超时")
-                    self.config.notifier.push(title=self.config.task.command, content=f"道馆流程超时")
-                    self.save_image(save_flag=True)
+                    self.save_image(image_type='png', push_flag=True,content= f"道馆流程超时")
                     break
                 timer_count += 1
                 self.device.stuck_record_clear()
@@ -196,12 +190,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         if self.appear(self.I_FANGSHOU, threshold=0.8):
             logger.info(f"在选寮界面中")
             return False, DokanScene.RYOU_DOKAN_SCENE_FINDING_DOKAN
-        # # 状态, 判断是否正在查找道馆
-        # if self.appear(self.I_RYOU_DOKAN_FINDING_DOKAN):
-        #     return True, DokanScene.RYOU_DOKAN_SCENE_FINDING_DOKAN
-        # # 状态, 判断是否已查找到道馆
-        # if self.appear(self.I_RYOU_DOKAN_FOUND_DOKAN):
-        #     return True, DokanScene.RYOU_DOKAN_SCENE_FOUND_DOKAN
         # 状态：判断是否集结中
         if self.appear(self.I_RYOU_DOKAN_GATHERING, threshold=0.95):
             current_scene = DokanScene.RYOU_DOKAN_SCENE_GATHERING
@@ -606,7 +594,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     sleep(0.5)
             return False
 
-        while num_fresh < 7:
+        while num_fresh < self.config.dokan.dokan_config.find_dokan_refresh_count:
             for i in range(3):
                 sleep(3)
                 if find_challengeable():
