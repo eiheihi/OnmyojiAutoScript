@@ -560,9 +560,9 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     continue
                 p_num = int(tmp.group())
 
-                logger.hr(f"资金:{bounty},人数:{p_num},系数:{bounty / p_num:.2f}", 2)
+                item_score = float(f"{bounty / p_num:.2f}")
+                logger.hr(f"资金:{bounty},人数:{p_num},系数:{item_score}", 2)
 
-                item_score = bounty / p_num
                 if item_score < min_score:
                     min_score = item_score
                     idx_selected = idx
@@ -581,11 +581,13 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     logger.warning(f"馆主不是修习等级的,不符合要求")
                     continue
                 logger.info(f"已找到符合要求的道馆")
-                self.push_notify(f"准备开启道馆: 资金:{bounty},人数:{p_num},系数:{bounty / p_num:.2f}")
+                self.push_notify(f"准备开启道馆: 资金:{bounty},人数:{p_num},系数:{item_score}")
                 return True
             # 在所有列表中都没有符合的,且忽略系数限制,那么就选择最低分数的那个,点击显示挑战按钮
             if ignore_score:
                 x, y, w, h = bounty_list[idx_selected]
+                self.device.click(x, y)
+                sleep(0.5)
                 while 1:
                     self.screenshot()
                     if self.appear(self.I_CENTER_CHALLENGE):
@@ -599,8 +601,14 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 sleep(3)
                 if find_challengeable():
                     logger.info("已找到合适的道馆")
-                    self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1)
-                    self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
+                    while 1:
+                        self.screenshot()
+                        if self.appear(self.I_RYOU_DOKAN_CHECK, interval=1):
+                            break
+                        if self.appear_then_click(self.I_CHALLENGE_ENSURE, interval=1):
+                            continue
+                        if self.appear_then_click(self.I_CENTER_CHALLENGE, interval=1):
+                            continue
                     # 恢复初始位置信息,防止下次使用出错
                     restore_roi()
                     return True
@@ -613,13 +621,19 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             logger.info(f"=========第{num_fresh}次刷新列表=========")
             self.ui_click(self.C_DOKAN_REFRESH, self.I_REFRESH_ENSURE, interval=1)
             self.ui_click_until_disappear(self.I_REFRESH_ENSURE, interval=1)
-            logger.info("刷新完成")
+            sleep(1)
 
         # 刷新次数用完,仍未找到符合条件的道馆,选择当前列表(约4个)中系数最低的
         if find_challengeable(ignore_score=True):
-            logger.warning("找到符合条件的道馆,选择当前列表中系数最低的")
-            self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1)
-            self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
+            logger.warning("未找到符合条件的道馆,选择当前列表中系数最低的")
+            while 1:
+                self.screenshot()
+                if self.appear(self.I_RYOU_DOKAN_CHECK, interval=1):
+                    break
+                if self.appear_then_click(self.I_CHALLENGE_ENSURE, interval=1):
+                    continue
+                if self.appear_then_click(self.I_CENTER_CHALLENGE, interval=1):
+                    continue
             return True
         return False
 
