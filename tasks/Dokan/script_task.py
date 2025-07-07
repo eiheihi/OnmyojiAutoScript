@@ -519,7 +519,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             idx_selected = -1
             for idx, item in enumerate(bounty_list):
                 self.device.click_record_clear()
-                logger.info(f"------start no.{idx} =={item}-----------")
+                logger.hr(f"开始识别道馆： No.{idx} = {item}", 2)
 
                 # 点击使挑战按钮消失的区域(C_DOKAN_CANCEL_SELECT_DOKAN), 点击可能点击到其他寮,
                 # 因此需要在此处多点几次,直到挑战按钮消失,
@@ -561,7 +561,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 p_num = int(tmp.group())
 
                 item_score = float(f"{bounty / p_num:.2f}")
-                logger.hr(f"资金:{bounty},人数:{p_num},系数:{item_score}", 2)
+                logger.info(f"========== 资金:{bounty},人数:{p_num},系数:{item_score} ==========")
 
                 if item_score < min_score:
                     min_score = item_score
@@ -586,16 +586,15 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             # 在所有列表中都没有符合的,且忽略系数限制,那么就选择最低分数的那个,点击显示挑战按钮
             if ignore_score:
                 x, y, w, h = bounty_list[idx_selected]
-                self.device.click(x, y)
-                sleep(0.5)
                 while 1:
-                    self.screenshot()
-                    if self.appear(self.I_CENTER_CHALLENGE):
-                        return True
                     self.device.click(x, y)
                     sleep(0.5)
+                    self.screenshot()
+                    if self.appear(self.I_CENTER_CHALLENGE):
+                        self.push_notify(f"选择当前列表中系数最低的{min_score}")
+                        return True
             return False
-
+        logger.hr("开始寻找合适的道馆", 2)
         while num_fresh < 5:
             for i in range(3):
                 sleep(3)
