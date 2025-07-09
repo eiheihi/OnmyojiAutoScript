@@ -2,8 +2,8 @@
   {
     "itemName": "green_mark",
     "imageName": "green_mark.png",
-    "roiFront": "157,220,979,229,",
-    "roiBack": "157,220,979,229,",
+    "roiFront": "157,220,979,229",
+    "roiBack": "157,220,979,229",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "区域找绿标"
