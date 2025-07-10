@@ -119,8 +119,8 @@
   {
     "itemName": "soul_raid",
     "imageName": "res_soul_raid.png",
-    "roiFront": "577,502,100,100",
-    "roiBack": "577,502,100,100",
+    "roiFront": "577,350,100,252",
+    "roiBack": "577,350,100,252",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "打完个后出现的领取奖励"
