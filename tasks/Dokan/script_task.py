@@ -283,7 +283,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 logger.info(f"第 {self.battle_count} 次战斗")
                 self.ui_click_until_disappear(self.I_RYOU_DOKAN_IN_FIELD)
                 # 绿标
-                self.green_mark(config.green_enable, config.green_mark)
+                self.dokan_green_mark(config.green_enable, config.green_mark)
                 self.device.click_record_clear()
                 self.device.stuck_record_add('BATTLE_STATUS_S')
 
@@ -335,7 +335,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 logger.info("random swipt ...")
                 self.random_click_swipt()
 
-    def green_mark(self, enable: bool = False, mark_mode: GreenMarkType = GreenMarkType.GREEN_MAIN):
+    def dokan_green_mark(self, enable: bool = False, mark_mode: GreenMarkType = GreenMarkType.GREEN_MAIN):
         """
         绿标， 如果不使能就直接返回
         :param enable:
@@ -378,6 +378,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 if self.wait_until_appear(self.I_GREEN_MARK, wait_time=1):
                     # logger.info("识别到绿标,返回")
                     break
+                else:
+                    self.save_image(content="识别绿标超时", push_flag=True, wait_time=0, image_type=True)
                 if mark_timer.reached():
                     # logger.warning("识别绿标超时,返回")
                     break
