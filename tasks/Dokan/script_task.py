@@ -27,6 +27,8 @@ from tasks.RichMan.assets import RichManAssets
 from tasks.Component.GeneralInvite.assets import GeneralInviteAssets
 
 """ 道馆 """
+
+
 class DokanScene(Enum):
     # 未知界面
     RYOU_DOKAN_SCENE_UNKNOWN = 0
@@ -109,7 +111,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             if scene_timer and scene_timer.reached():
                 scene_timer.reset()
                 if timer_count >= 100:
-                    self.save_image(image_type='png', push_flag=True,content= f"道馆流程超时")
+                    self.save_image(image_type='png', push_flag=True, content=f"道馆流程超时")
                     break
                 timer_count += 1
                 self.device.stuck_record_clear()
@@ -343,7 +345,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         :return:
         """
         if enable:
-            if self.wait_until_appear(self.I_GREEN_MARK, wait_time=1):
+            if self.dokan_wait_until_appear(self.I_GREEN_MARK, self.I_GREEN_MARK_1, wait_time=1):
                 # logger.info("识别到绿标，返回")
                 return
             # logger.info("Green is enable")
@@ -375,7 +377,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             mark_timer.start()
             while 1:
                 self.screenshot()
-                if self.wait_until_appear(self.I_GREEN_MARK, wait_time=1):
+                if self.dokan_wait_until_appear(self.I_GREEN_MARK, self.I_GREEN_MARK_1, wait_time=1):
                     # logger.info("识别到绿标,返回")
                     break
                 else:
@@ -388,6 +390,38 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 # 点击绿标
                 self.device.click(x, y)
 
+    def dokan_wait_until_appear(self,
+                                target,
+                                target2,
+                                skip_first_screenshot=False,
+                                wait_time: int = None) -> bool:
+        """
+        等待直到出现目标
+        :param wait_time: 等待时间，单位秒
+        :param target:
+        :param target2:
+        :param skip_first_screenshot:
+        :return:
+
+        Parameters
+        ----------
+        target2
+        """
+        wait_timer = None
+        if wait_time:
+            wait_timer = Timer(wait_time)
+            wait_timer.start()
+        while 1:
+            if skip_first_screenshot:
+                skip_first_screenshot = False
+            else:
+                self.screenshot()
+            if wait_timer and wait_timer.reached():
+                logger.warning(f"Wait until appear {target.name} timeout")
+                return False
+            if self.appear(target) or self.appear(target2):
+                return True
+
     def goto_dokan(self):
 
         if self.is_in_dokan():
@@ -396,7 +430,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         # 进入选择寮界面
         self.ui_get_current_page()
         self.ui_goto(page_guild)
-        
+
         while 1:
             self.screenshot()
 
@@ -596,6 +630,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                         self.push_notify(f"选择当前列表中系数最低的{min_score}")
                         return True
             return False
+
         logger.hr("开始寻找合适的道馆", 2)
         while num_fresh < 5:
             for i in range(3):

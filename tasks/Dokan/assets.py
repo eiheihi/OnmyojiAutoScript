@@ -24,7 +24,7 @@ class DokanAssets:
 	# 准备战斗 
 	C_DOKAN_READY_FOR_BATTLE = RuleClick(roi_front=(42,94,1207,543), roi_back=(42,94,1207,543), name="dokan_ready_for_battle")
 	# 道馆从左开始第五个绿标 
-	C_DOKAN_GREEN_LEFT_5 = RuleClick(roi_front=(993,474,67,104), roi_back=(993,474,67,104), name="dokan_green_left_5")
+	C_DOKAN_GREEN_LEFT_5 = RuleClick(roi_front=(1006,482,38,96), roi_back=(1006,482,38,96), name="dokan_green_left_5")
 	# 查找道馆时 点击此区域 隐藏道馆详情(显示防守人数,馆主等级等的卡片) 
 	C_DOKAN_CANCEL_SELECT_DOKAN = RuleClick(roi_front=(1070,610,30,90), roi_back=(1070,610,30,90), name="dokan_cancel_select_dokan")
 	# ruleanimate 用作检测选择道馆时,确定地图区域稳定无动作 
@@ -37,7 +37,9 @@ class DokanAssets:
 
 	# Image Rule Assets
 	# 区域找绿标 
-	I_GREEN_MARK = RuleImage(roi_front=(157,220,979,229), roi_back=(157,220,979,229), threshold=0.8, method="Template matching", file="./tasks/Dokan/res/green_mark.png")
+	I_GREEN_MARK = RuleImage(roi_front=(157,220,979,229), roi_back=(157,220,979,229), threshold=0.6, method="Template matching", file="./tasks/Dokan/res/green_mark.png")
+	# 区域找绿标 
+	I_GREEN_MARK_1 = RuleImage(roi_front=(157,220,979,229), roi_back=(157,220,979,229), threshold=0.6, method="Template matching", file="./tasks/Dokan/res/green_mark_1.png")
 	# 道馆 
 	I_DAOGUAN = RuleImage(roi_front=(462,159,100,100), roi_back=(462,159,100,100), threshold=0.8, method="Template matching", file="./tasks/Dokan/res/Screenshots_daoguan.png")
 	# 寮称号 

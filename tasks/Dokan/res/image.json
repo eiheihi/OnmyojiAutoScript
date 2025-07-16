@@ -5,7 +5,16 @@
     "roiFront": "157,220,979,229",
     "roiBack": "157,220,979,229",
     "method": "Template matching",
-    "threshold": 0.8,
+    "threshold": 0.6,
+    "description": "区域找绿标"
+  },
+  {
+    "itemName": "green_mark_1",
+    "imageName": "green_mark_1.png",
+    "roiFront": "157,220,979,229",
+    "roiBack": "157,220,979,229",
+    "method": "Template matching",
+    "threshold": 0.6,
     "description": "区域找绿标"
   },
   {
