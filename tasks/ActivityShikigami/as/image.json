@@ -92,8 +92,8 @@
   {
     "itemName": "switch",
     "imageName": "as_switch.png",
-    "roiFront": "1242,553,23,23",
-    "roiBack": "1222,541,54,49",
+    "roiFront": "1214,559,23,23",
+    "roiBack": "1204,541,69,56",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "切换按键"
@@ -117,28 +117,10 @@
     "description": "增加到最大"
   },
   {
-    "itemName": "skip_button",
-    "imageName": "as_skip_button.png",
-    "roiFront": "1154,34,64,30",
-    "roiBack": "1154,34,64,30",
-    "method": "Template matching",
-    "threshold": 0.8,
-    "description": "右上跳过按钮"
-  },
-  {
-    "itemName": "red_exit",
-    "imageName": "as_red_exit.png",
-    "roiFront": "1071,141,49,46",
-    "roiBack": "1071,141,49,46",
-    "method": "Template matching",
-    "threshold": 0.8,
-    "description": "红色退出"
-  },
-  {
-    "itemName": "toggle_button",
-    "imageName": "as_toggle_button.png",
-    "roiFront": "1193,463,27,25",
-    "roiBack": "1169,146,73,403",
+    "itemName": "new",
+    "imageName": "as_new.png",
+    "roiFront": "1004,192,65,52",
+    "roiBack": "0,0,100,100",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "description"
