@@ -345,7 +345,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         :return:
         """
         if enable:
-            if self.dokan_wait_until_appear(self.I_GREEN_MARK, self.I_GREEN_MARK_1, wait_time=1):
+            if self.appear(self.I_GREEN_MARK) or self.appear(self.I_GREEN_MARK_1):
                 # logger.info("识别到绿标，返回")
                 return
             # logger.info("Green is enable")
@@ -365,30 +365,25 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                 case GreenMarkType.GREEN_MAIN:
                     x, y = self.C_GREEN_MAIN.coord()
 
-            # 等待那个准备的消失
-            while 1:
-                self.screenshot()
-                if not self.appear(self.I_RYOU_DOKAN_IN_FIELD):
-                    break
-                if self.ui_click_until_disappear(self.I_RYOU_DOKAN_IN_FIELD):
-                    continue
-
             mark_timer = Timer(5)
             mark_timer.start()
             while 1:
-                self.screenshot()
+                # 等待那个准备的消失
+                self.ui_click_until_disappear(self.I_RYOU_DOKAN_IN_FIELD)
+                # 点击坐标
+                self.device.click(x, y)
                 if self.dokan_wait_until_appear(self.I_GREEN_MARK, self.I_GREEN_MARK_1, wait_time=1):
                     # logger.info("识别到绿标,返回")
+                    self.save_image(task_name="Dokan_greenmark_ok", content="点击绿标成功", push_flag=True, wait_time=0, image_type=True)
                     break
                 else:
-                    self.save_image(content="识别绿标超时", push_flag=True, wait_time=0, image_type=True)
+                    self.save_image(task_name="Dokan_greenmark_false", content="识别绿标超时", push_flag=True, wait_time=0, image_type=True)
                 if mark_timer.reached():
                     # logger.warning("识别绿标超时,返回")
                     break
                 # 判断有无坐标的偏移
                 # self.appear_then_click(self.I_LOCAL)
-                # 点击绿标
-                self.device.click(x, y)
+
 
     def dokan_wait_until_appear(self,
                                 target,
