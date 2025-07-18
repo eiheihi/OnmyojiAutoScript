@@ -10,6 +10,7 @@ from module.atom.image_grid import ImageGrid
 from module.logger import logger
 from module.exception import TaskEnd
 from ppocronnx.predict_system import BoxedResult
+from module.exception import TaskEnd,GameStuckError
 
 from tasks.GameUi.game_ui import GameUi
 from tasks.Utils.config_enum import ShikigamiClass
@@ -464,7 +465,13 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             # 可能是滑动的时候出错
             logger.warning('The best reason is that the swipe is wrong')
             return False
+        TIMEOUT_SEC = 120          # 超时时长（秒）
+        start_time = time.time()   # 记录起始时间
         while 1:
+            # ——1. 先做超时检查——
+            if time.time() - start_time > TIMEOUT_SEC:
+                logger.error('寄养等待超过 2 分钟，自动退出')
+                raise GameStuckError('寄养超时（>120 s）')
             self.screenshot()
             if self.appear(self.I_CHECK_FRIEND_REALM_1):
                 self.wait_until_stable(self.I_CHECK_FRIEND_REALM_1)
@@ -563,7 +570,6 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             if self.appear_then_click(self.I_UI_BACK_BLUE, interval=1):
                 continue
 
-
 if __name__ == "__main__":
     from module.config.config import Config
     from module.device.device import Device
@@ -576,3 +582,5 @@ if __name__ == "__main__":
     # t.screenshot()
     # print(t.appear(t.I_BOX_EXP, threshold=0.6))
     # print(t.appear(t.I_BOX_EXP_MAX, threshold=0.6))
+
+
