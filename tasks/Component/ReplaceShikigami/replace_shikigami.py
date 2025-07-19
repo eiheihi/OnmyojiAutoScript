@@ -90,9 +90,9 @@ class ReplaceShikigami(BaseTask, ReplaceShikigamiAssets):
         while 1:
             # ——1. 先做超时检查——
             if time.time() - start_time > TIMEOUT_SEC:
-                logger.error('寄养等待超过 1 分钟，自动退出')
-                raise GameStuckError('寄养超时（>60 s）')
-
+                logger.error('寄养等待超过 2 分钟，自动退出')
+                raise GameStuckError('寄养超时（>120 s）')
+            
             self.screenshot()
 
             if not self.appear(stop_image):
