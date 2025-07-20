@@ -100,6 +100,11 @@ class ScriptTask(GameUi, BaseActivity, SwitchSoul, ActivityShikigamiAssets):
                     logger.info("Activity ap out and switch to game ap")
                     current_ap = ApMode.AP_GAME
                     self.switch(current_ap)
+                    is_remain = self.check_ap_remain(current_ap)
+                    # 如果没有剩余了且这个时候是体力，就退出活动
+                    if not is_remain and current_ap == ApMode.AP_GAME:
+                        logger.info("Game ap out")
+                        break
                 else:
                     logger.info("Activity ap out")
                     break

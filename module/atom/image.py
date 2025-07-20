@@ -11,6 +11,7 @@ from module.base.decorator import cached_property
 from module.logger import logger
 from module.base.utils import is_approx_rectangle
 
+
 class RuleImage:
 
     def __init__(self, roi_front: tuple, roi_back: tuple, method: str, threshold: float, file: str) -> None:
@@ -33,15 +34,15 @@ class RuleImage:
         self.threshold = threshold
         self.file = file
 
-
+    def __set_name__(self, owner, name):
+        """自动记录变量名（当 RuleImage 实例作为类属性被定义时触发）"""
+        self.variable_name = name  # 新增属性，存储变量名
 
     @cached_property
     def name(self) -> str:
-        """
-
-        :return:
-        """
-        return Path(self.file).stem.upper()
+        # return Path(self.file).stem.upper()
+        """优先返回变量名，若未捕获则返回文件名"""
+        return getattr(self, 'variable_name', Path(self.file).stem.upper())
 
     def __str__(self):
         return self.name
@@ -56,8 +57,6 @@ class RuleImage:
 
     def __bool__(self):
         return True
-
-
 
     def load_image(self) -> None:
         """
@@ -74,13 +73,12 @@ class RuleImage:
         if height != self.roi_front[3] or width != self.roi_front[2]:
             self.roi_front[2] = width
             self.roi_front[3] = height
-            logger.debug(f"{self.name} roi_front size changed to {width}x{height}")
+            # logger.info(f"roi_front size changed to {width}x{height}")
 
     def load_kp_des(self) -> None:
         if self._kp is not None and self._des is not None:
             return
         self._kp, self._des = self.sift.detectAndCompute(self.image, None)
-
 
     @property
     def image(self):
@@ -149,16 +147,99 @@ class RuleImage:
 
         source = self.corp(image)
         mat = self.image
-
-        if mat is None or mat.shape[0] == 0 or mat.shape[1] == 0:
-            logger.error(f"Template image is invalid: {mat.shape}") #检测模板尺寸，不合法则不进行匹配，避免两次截图画面完全相同造成模板不合法
-            return True  # 如果模板图像无效，直接返回 True
-
         res = cv2.matchTemplate(source, mat, cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)  # 最小匹配度，最大匹配度，最小匹配度的坐标，最大匹配度的坐标
         # logger.attr(self.name, max_val)
-
         if max_val > threshold:
+            self.roi_front[0] = max_loc[0] + self.roi_back[0]
+            self.roi_front[1] = max_loc[1] + self.roi_back[1]
+            return True
+        else:
+            return False
+
+    def match_test(self, image: np.array, threshold: float = None) -> bool:
+        """
+        :param threshold:
+        :param image:
+        :return:
+        """
+        if threshold is None:
+            threshold = self.threshold
+
+        if not self.is_template_match:
+            return self.sift_match(image)
+            # raise Exception(f"unknown method {self.method}")
+
+        source = self.corp(image)
+        mat = self.image
+        res = cv2.matchTemplate(source, mat, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)  # 最小匹配度，最大匹配度，最小匹配度的坐标，最大匹配度的坐标
+        logger.attr(self.name, max_val)
+        if max_val > threshold:
+            self.roi_front[0] = max_loc[0] + self.roi_back[0]
+            self.roi_front[1] = max_loc[1] + self.roi_back[1]
+            return True
+        else:
+            return False
+    def match_first(self, image: np.array, threshold: float = None) -> bool:
+        """
+        自上而下找第一个匹配结果
+        :param threshold:
+        :param image:
+        :return:
+        """
+        if threshold is None:
+            threshold = self.threshold
+
+        if not self.is_template_match:
+            return self.sift_match(image)
+            # raise Exception(f"unknown method {self.method}")
+
+        source = self.corp(image)
+        mat = self.image
+        res = cv2.matchTemplate(source, mat, cv2.TM_CCOEFF_NORMED)
+        # 获取所有超过阈值的坐标
+        loc = np.where(res >= threshold)
+        if loc[0].size == 0:  # 无匹配
+            return False
+
+        # 直接取 y 最小的点（即最顶部）
+        top_loc = loc[0]
+        # 更新 ROI（根据需求调整）
+        self.roi_front[0] = top_loc[0] + self.roi_back[0]
+        self.roi_front[1] = top_loc[1] + self.roi_back[1]
+
+        return True
+
+    def match_gray(self, image: np.array, threshold: float = None) -> bool:
+        """
+        :param threshold: 匹配阈值，默认为实例的阈值
+        :param image: 输入图像
+        :return: 匹配成功返回True，否则返回False
+        """
+        if threshold is None:
+            threshold = self.threshold
+
+        if not self.is_template_match:
+            return self.sift_match(image)
+
+        # 裁剪图像到指定区域
+        source = self.corp(image)
+        template = self.image
+
+        # 转换为灰度图像以去除颜色影响
+        if source.ndim == 3:
+            source = cv2.cvtColor(source, cv2.COLOR_BGR2GRAY)
+        if template.ndim == 3:
+            template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+
+        # 执行模板匹配
+        res = cv2.matchTemplate(source, template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        # logger.attr(self.name, max_val)
+        # 根据阈值判断匹配结果
+        if max_val > threshold:
+            # 更新ROI坐标
             self.roi_front[0] = max_loc[0] + self.roi_back[0]
             self.roi_front[1] = max_loc[1] + self.roi_back[1]
             return True
@@ -192,7 +273,39 @@ class RuleImage:
             matches.append((score, x, y, mat.shape[1], mat.shape[0]))
         return matches
 
-
+    def match_all_any(self, image: np.array, threshold: float = None, roi: list = None, nms_threshold: float = 0.3) -> list[tuple]:
+        """
+        区别于match，这个是返回所有的匹配结果
+        :param roi:
+        :param image:
+        :param threshold:
+        :return:
+        """
+        if roi is not None:
+            self.roi_back = roi
+        if threshold is None:
+            threshold = self.threshold
+        if not self.is_template_match:
+            raise Exception(f"unknown method {self.method}")
+        source = self.corp(image)
+        mat = self.image
+        results = cv2.matchTemplate(source, mat, cv2.TM_CCOEFF_NORMED)
+        locations = np.where(results >= threshold)
+        matches = []
+        for pt in zip(*locations[::-1]):  # (x, y) coordinates
+            score = results[pt[1], pt[0]]
+            # 得分, x, y, w, h
+            x = self.roi_back[0] + pt[0]
+            y = self.roi_back[1] + pt[1]
+            matches.append((score, x, y, mat.shape[1], mat.shape[0]))
+        if len(matches) > 0:
+            scores = np.array([m[0] for m in matches])
+            boxes = np.array([[m[1], m[2], m[3], m[4]] for m in matches])
+            # 使用OpenCV的NMSBoxes
+            indices = cv2.dnn.NMSBoxes(boxes.tolist(), scores.tolist(), score_threshold=threshold, nms_threshold=nms_threshold)
+            filtered_matches = [matches[i] for i in indices]
+            return filtered_matches
+        return matches
     def coord(self) -> tuple:
         """
         获取roi_front的随机的点击的坐标
@@ -215,7 +328,7 @@ class RuleImage:
         :return:
         """
         x, y, w, h = self.roi_front
-        return int(x + w//2), int(y + h//2)
+        return int(x + w // 2), int(y + h // 2)
 
     def test_match(self, image: np.array):
         if self.is_template_match:
@@ -308,17 +421,13 @@ class RuleImage:
 
 
 if __name__ == "__main__":
-    from dev_tools.assets_test import detect_image
 
-    IMAGE_FILE = './log/test/QQ截图20240223151924.png'
-    from tasks.Restart.assets import RestartAssets
-    jade = RestartAssets.I_HARVEST_JADE
-    jade.method = 'Sift Flann'
-    sign = RestartAssets.I_HARVEST_SIGN
-    sign.method = 'Sift Flann'
-    print(jade.roi_front)
+    from tasks.KekkaiUtilize.assets import KekkaiUtilizeAssets
 
-    detect_image(IMAGE_FILE, jade)
-    detect_image(IMAGE_FILE, sign)
-    print(jade.roi_front)
-
+    IMAGE_FILE = r"D:\MuMu12\共享文件夹\Screenshots\MuMu12-20250404-231231.png"
+    file = Path(IMAGE_FILE)
+    img = cv2.imdecode(fromfile(file, dtype=uint8), -1)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    target = KekkaiUtilizeAssets.I_U_FISH_6
+    match = target.match_all_any(img, threshold=0.8, nms_threshold=0.3)
+    print(match)

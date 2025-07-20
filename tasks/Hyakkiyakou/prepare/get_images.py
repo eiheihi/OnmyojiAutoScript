@@ -62,7 +62,6 @@ class GenerateImages(GameUi, HyakkiyakouAssets):
             #     continue
             if save_img_timer.reached():
                 save_img_timer.reset()
-                self.save_image()
         self.ui_click(self.I_HEND, self.I_HACCESS)
 
     def save_image(self, image=None):

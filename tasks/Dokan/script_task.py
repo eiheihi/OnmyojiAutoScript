@@ -81,7 +81,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
 
     def run(self):
         # 检查今天周几
-        self.check_current_weekday()
+        #self.check_current_weekday()
 
         cfg: Dokan = self.config.dokan
 
@@ -227,7 +227,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
         # 状态：战斗结算，可能是打完小朋友了，也可能是失败了。
         if self.appear(self.I_RYOU_DOKAN_BATTLE_OVER, threshold=0.85):
             logger.info(f"打完看到魂奖励中")
-            self.save_image()
             self.appear_then_click(self.I_RYOU_DOKAN_BATTLE_OVER)
             return True, DokanScene.RYOU_DOKAN_SCENE_BATTLE_OVER
         # 如果出现失败 就点击
@@ -321,7 +320,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
             # 如果领奖励
             if self.appear(self.I_RYOU_DOKAN_BATTLE_OVER, threshold=0.6):
                 logger.info("领奖励,那个魂")
-                self.save_image()
                 self.ui_click_until_disappear(self.I_RYOU_DOKAN_BATTLE_OVER)
                 break
 
@@ -612,7 +610,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     logger.warning(f"馆主不是修习等级的,不符合要求")
                     continue
                 logger.info(f"已找到符合要求的道馆")
-                self.push_notify(f"准备开启道馆: 资金:{bounty},人数:{p_num},系数:{item_score}")
+                logger.info(f"准备开启道馆: 资金:{bounty},人数:{p_num},系数:{item_score}")
                 return True
             # 在所有列表中都没有符合的,且忽略系数限制,那么就选择最低分数的那个,点击显示挑战按钮
             if ignore_score:
@@ -622,7 +620,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, DokanAssets, RichManAssets):
                     sleep(0.5)
                     self.screenshot()
                     if self.appear(self.I_CENTER_CHALLENGE):
-                        self.push_notify(f"选择当前列表中系数最低的{min_score}")
+                        logger.info(f"选择当前列表中系数最低的{min_score}")
                         return True
             return False
 

@@ -28,6 +28,8 @@ from tasks.GlobalGame.assets import GlobalGameAssets
 from tasks.GlobalGame.config_emergency import FriendInvitation, WhenNetworkAbnormal, WhenNetworkError
 from tasks.Component.Costume.costume_base import CostumeBase
 from tasks.Component.config_base import ConfigBase, Time
+from module.server.i18n import I18n
+
 
 from module.exception import GameStuckError, ScriptError
 
@@ -629,3 +631,31 @@ class BaseTask(GlobalGameAssets, CostumeBase):
             if isinstance(click, RuleOcr):
                 self.click(click)
                 continue
+    def next_run_week(self, target_day: int = 1):
+        """
+        计算下一次运行的时间，目标是每周的特定一天。
+
+        参数:
+        target_day (int): 目标运行的日，取值1到7代表周一到周日，默认为1（周一）。
+        """
+        today = datetime.today()
+        current_weekday = today.weekday()  # 周一为0，周日为6
+        target = target_day - 1    # 将输入1-7转换为0-6
+        days_diff = (target - current_weekday) % 7 or 7
+
+        TaskName = self.config.task.command
+        logger.info(f'{TaskName} done in {days_diff} days on next Week [{target_day}].')
+
+        # 获取服务更新时间配置
+        task_name = convert_to_underscore(TaskName)
+        task_object = getattr(self.config.model, task_name, None)
+        scheduler = getattr(task_object, 'scheduler', None)
+        server_update = scheduler.server_update
+
+        self.config.notifier.push(title=I18n.trans_zh_cn(TaskName), content=f'任务下周{target_day}执行')
+
+        # 调用自定义函数设置下一次运行时间
+        self.custom_next_run(task=TaskName,
+                             custom_time=Time(hour=server_update.hour, minute=server_update.minute,
+                                              second=server_update.second),
+                             time_delta=days_diff)
