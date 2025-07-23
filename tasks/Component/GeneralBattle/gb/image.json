@@ -295,5 +295,14 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "新版本的预设图案带数字"
+  },
+  {
+    "itemName": "reward_1",
+    "imageName": "gb_reward_1.png",
+    "roiFront": "539,507,190,100",
+    "roiBack": "539,507,190,100",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "description"
   }
 ]

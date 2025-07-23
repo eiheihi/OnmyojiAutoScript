@@ -133,6 +133,8 @@ class GeneralBattleAssets:
 	I_GREEN_MARKER_BOTTOM = RuleImage(roi_front=(0,0,1280,720), roi_back=(0,0,1280,720), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_green_marker_bottom.png")
 	# 新版本的预设图案带数字 
 	I_PRESET_WIT_NUMBER = RuleImage(roi_front=(40,655,37,37), roi_back=(9,636,100,74), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_preset_wit_number.png")
+	# description 
+	I_REWARD_1 = RuleImage(roi_front=(539,507,190,100), roi_back=(539,507,190,100), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_reward_1.png")
 
 
 	# Image Rule Assets
