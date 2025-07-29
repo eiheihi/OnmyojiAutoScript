@@ -460,10 +460,10 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         self.click(self.I_WQ_FRIEND_5)
         sleep(0.2)
         self.screenshot()
-        if not self.appear(self.I_SELECTED):
+        if not self.appear(self.I_WQ_INVITE_SELECTED):
             logger.warning('No friend selected')
             return False
-        self.ui_click_until_disappear(self.I_INVITE_ENSURE)
+        self.ui_click_until_disappear(self.I_WQ_INVITE_ENSURE)
         sleep(0.5)
 
     def invite_five(self):

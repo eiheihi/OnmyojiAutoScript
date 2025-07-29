@@ -315,6 +315,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
 
             if self.appear_then_click(RealmRaidAssets.I_FIRE, interval=2, threshold=0.8):
                 click_failure_count += 1
+                if not self.check_area(index):
+                    return False
                 continue
             if self.click(rcl, interval=5):
                 continue

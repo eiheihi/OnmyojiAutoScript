@@ -17,6 +17,7 @@ from tasks.Orochi.config import Orochi, UserStatus, Layer
 from module.logger import logger
 from module.exception import TaskEnd
 
+
 class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi, SwitchSoul, OrochiAssets):
 
     def run(self) -> bool:
@@ -39,7 +40,8 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
         limit_time = self.config.orochi.orochi_config.limit_time
         self.current_count = 0
         self.limit_count: int = limit_count
-        self.limit_time: timedelta = timedelta(hours=limit_time.hour, minutes=limit_time.minute, seconds=limit_time.second)
+        self.limit_time: timedelta = timedelta(hours=limit_time.hour, minutes=limit_time.minute,
+                                               seconds=limit_time.second)
 
         config: Orochi = self.config.orochi
         if not self.is_in_battle(True):
@@ -52,11 +54,16 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
 
         success = True
         match config.orochi_config.user_status:
-            case UserStatus.LEADER: success = self.run_leader()
-            case UserStatus.MEMBER: success = self.run_member()
-            case UserStatus.ALONE: self.run_alone()
-            case UserStatus.WILD: success = self.run_wild()
-            case _: logger.error('Unknown user status')
+            case UserStatus.LEADER:
+                success = self.run_leader()
+            case UserStatus.MEMBER:
+                success = self.run_member()
+            case UserStatus.ALONE:
+                self.run_alone()
+            case UserStatus.WILD:
+                success = self.run_wild()
+            case _:
+                logger.error('Unknown user status')
 
         # 记得关掉
         if config.orochi_config.soul_buff_enable:
@@ -70,8 +77,6 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             self.set_next_run('Orochi', finish=False, success=False)
 
         raise TaskEnd
-
-
 
     def orochi_enter(self) -> bool:
         logger.info('Enter orochi')
@@ -113,16 +118,6 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                     return True
                 if self.appear_then_click(self.I_OROCHI_LOCK, interval=1):
                     continue
-
-
-
-
-
-
-
-
-
-
 
     def run_leader(self):
         logger.info('Start run leader')
@@ -171,8 +166,6 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                 if self.is_in_room():
                     logger.info('Orochi time limit out')
                     break
-
-
 
             # 如果没有进入房间那就不需要后面的邀请
             if not self.is_in_room():
@@ -263,7 +256,6 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             # 如果还在战斗中，就退出战斗
             if self.exit_battle():
                 pass
-
 
         self.ui_get_current_page()
         self.ui_goto(page_main)
@@ -434,7 +426,7 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
         while 1:
             self.screenshot()
             action_click = random.choice([self.C_WIN_1, self.C_WIN_2, self.C_WIN_3])
-            if self.appear_then_click(self.I_WIN, action=action_click ,interval=0.8):
+            if self.appear_then_click(self.I_WIN, action=action_click, interval=0.8):
                 # 赢的那个鼓
                 continue
             if self.appear(self.I_GREED_GHOST):
@@ -556,37 +548,36 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                     continue
                 if not self.appear(self.I_FALSE, threshold=0.6):
                     return False
-        # 最后保证能点击 获得奖励
-        if not self.wait_until_appear(self.I_REWARD_GOLD, wait_time=5):
+        logger.info("Get reward")
+        if not self.wait_until_appear(self.I_REWARD_GOLD):
             # 有些的战斗没有下面的奖励，所以直接返回
             logger.info("There is no reward, Exit battle")
             return win
-        logger.info("Get reward")
         while 1:
             self.screenshot()
             # 如果出现领奖励
             action_click = random.choice([self.C_REWARD_1, self.C_REWARD_2, self.C_REWARD_3])
             if (self.appear_then_click(self.I_REWARD, action=action_click, interval=1.5) or
-                self.appear_then_click(self.I_REWARD_1, action=action_click, interval=1.5) or
-                self.appear_then_click(self.I_REWARD_GOLD, action=action_click, interval=1.5)#  or
-                # self.appear_then_click(self.I_REWARD_STATISTICS, action=action_click, interval=1.5) or
-                # self.appear_then_click(self.I_REWARD_PURPLE_SNAKE_SKIN, action=action_click, interval=1.5) or
-                # self.appear_then_click(self.I_REWARD_GOLD_SNAKE_SKIN, action=action_click, interval=1.5) or
-                # self.appear_then_click(self.I_REWARD_EXP_SOUL_4, action=action_click, interval=1.5) or
-                # self.appear_then_click(self.I_REWARD_SOUL_5, action=action_click, interval=1.5) or
-                # self.appear_then_click(self.I_REWARD_SOUL_6, action=action_click, interval=1.5)
-                ):
+                    self.appear_then_click(self.I_REWARD_1, action=action_click, interval=1.5) or
+                    self.appear_then_click(self.I_REWARD_GOLD, action=action_click, interval=1.5)  # or
+                    # self.appear_then_click(self.I_REWARD_STATISTICS, action=action_click, interval=1.5) or
+                    # self.appear_then_click(self.I_REWARD_PURPLE_SNAKE_SKIN, action=action_click, interval=1.5) or
+                    # self.appear_then_click(self.I_REWARD_GOLD_SNAKE_SKIN, action=action_click, interval=1.5) or
+                    # self.appear_then_click(self.I_REWARD_EXP_SOUL_4, action=action_click, interval=1.5) or
+                    # self.appear_then_click(self.I_REWARD_SOUL_5, action=action_click, interval=1.5) or
+                    # self.appear_then_click(self.I_REWARD_SOUL_6, action=action_click, interval=1.5)
+            ):
                 continue
             if (not self.appear(self.I_REWARD) and
-                not self.appear(self.I_REWARD_1) and
-                not self.appear(self.I_REWARD_GOLD)#  and
-                # not self.appear(self.I_REWARD_STATISTICS) and
-                # not self.appear(self.I_REWARD_PURPLE_SNAKE_SKIN) and
-                # not self.appear(self.I_REWARD_GOLD_SNAKE_SKIN) and
-                # not self.appear(self.I_REWARD_EXP_SOUL_4) and
-                # not self.appear(self.I_REWARD_SOUL_5) and
-                # not self.appear(self.I_REWARD_SOUL_6)
-                ):
+                    not self.appear(self.I_REWARD_1) and
+                    not self.appear(self.I_REWARD_GOLD)  # and
+                    # not self.appear(self.I_REWARD_STATISTICS) and
+                    # not self.appear(self.I_REWARD_PURPLE_SNAKE_SKIN) and
+                    # not self.appear(self.I_REWARD_GOLD_SNAKE_SKIN) and
+                    # not self.appear(self.I_REWARD_EXP_SOUL_4) and
+                    # not self.appear(self.I_REWARD_SOUL_5) and
+                    # not self.appear(self.I_REWARD_SOUL_6)
+            ):
                 break
 
         return win
@@ -595,16 +586,9 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
 if __name__ == '__main__':
     from module.config.config import Config
     from module.device.device import Device
+
     c = Config('oas1')
     d = Device(c)
     t = ScriptTask(c, d)
 
     t.run()
-
-
-
-
-
-
-
-
