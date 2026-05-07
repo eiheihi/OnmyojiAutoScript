@@ -300,7 +300,8 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
             idx_selected = -1
             for idx, item in enumerate(bounty_list):
                 self.device.click_record_clear()
-                logger.info(f"------start no.{idx} =={item}-----------")
+                logger.hr(f"开始识别道馆： No.{idx} = {item}", 2)
+
                 # 点击使挑战按钮消失的区域(C_DOKAN_CANCEL_SELECT_DOKAN), 点击可能点击到其他寮,
                 # 因此需要在此处多点几次,直到挑战按钮消失,
                 # 又因为出现挑战按钮动画时长较长,因此需要耗时
@@ -316,7 +317,7 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
                 if not tmp:
                     logger.warning(f"can't find bounty,item = {item},ocr bounty={bounty}")
                     continue
-                bounty = float(tmp.group())
+                bounty = int(tmp.group())
                 # 扩大搜索区域,防止找不到
                 self.I_RIGHTPAD_POINT_BOUNTY.roi_back = position_offset(item, (-10, -10, 20, 20))
                 # Note: 道馆不可挑战时(被别的寮打了),8秒后跳过
@@ -325,49 +326,79 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
                     logger.info(f"can't find challenge button,idx={idx} item={item}")
                     # 道馆不可挑战,挑战按钮不会弹出 ,直接进行下一个
                     continue
+
+                self.O_DOKAN_RIGHTPAD_NAME.roi = position_offset(item, (-37, 29, 127, 0))
+                dokan_name = self.O_DOKAN_RIGHTPAD_NAME.ocr(self.device.image)
+                # 只去除首尾的非汉字字符，保留中间的所有内容
+                dokan_name = re.sub(r'^[^\u4e00-\u9fa5]+', '', dokan_name)  # 去除开头非汉字
+                dokan_name = re.sub(r'[^\u4e00-\u9fa5]+$', '', dokan_name)  # 去除结尾非汉字
+
                 # 获取防守人数
                 self.screenshot()
                 if not self.appear(self.I_CENTER_POINT_PEOPLE_NUMBER):
                     logger.warning(f"can't find point people number image, item={item}")
                     continue
                 self.O_DOKAN_CENTER_PEOPLE_NUMBER.roi = position_offset(
-                    self.I_CENTER_POINT_PEOPLE_NUMBER.roi_front,
-                    (0, 0, 0, 30))
+                    self.I_CENTER_POINT_PEOPLE_NUMBER.roi_front, (0, 0, 0, 30))
                 p_num = self.O_DOKAN_CENTER_PEOPLE_NUMBER.detect_text(self.device.image)
                 tmp = re.search(r"(\d+)", p_num)
                 if not tmp:
                     logger.warning(f"can't find people number in ocr result,item={item}, p_num={p_num}")
                     continue
-                p_num = float(tmp.group())
-                logger.info(f"bounty:{bounty},people_num:{p_num},score:{bounty / p_num}")
-                item_score = bounty / p_num
+                p_num = int(tmp.group())
+
+                item_score = float(f"{bounty / p_num:.2f}")
+                logger.info(f"========== 名称:{dokan_name},资金:{bounty},人数:{p_num},系数:{item_score} ==========")
+
                 if item_score < min_score:
                     min_score = item_score
                     idx_selected = idx
                 # 大于系数 或者 系数过小(文字识别错误导致)
-                if item_score > score or item_score < 1.5:
-                    logger.info("click to making challenge disappear")
-                    continue
+                # if item_score > score or item_score < 1.5:
+                #     logger.warning(f"系数{item_score}大于{score},不符合要求")
+                #     continue
                 if p_num < self.config.dokan.dokan_config.min_people_num:
-                    logger.info("people num too small")
+                    logger.warning(f"人数{p_num}少于{self.config.dokan.dokan_config.min_people_num},不符合要求")
                     continue
-                if bounty < self.config.dokan.dokan_config.min_bounty:
-                    logger.info("bounty too small")
-                    continue
+                welfare_name_list = ["叶落苑", "鬼王鑫鑫子", "三丫小窝", "堡家军", "人前显圣", "棱镜", "我独自升级",
+                                     "全部起床",
+                                     "腐草为萤", "豆豆小屋", "云里来雾里", "shy粉团", "落樱", "小音の小窝", "裁酌天命",
+                                     "喵喵教", "深海", "车厘子", "尸兵现身", "喵喵幼稚园", "背水一战", "回忆", "阴花雨",
+                                     "伽椰子家族", "山色有无中", "蟹堡王", "一回忆", "星落屿", "石之海", "十五",
+                                     "有人小号",
+                                     "锦鲤一一", "一雾云川", "雾云川", "镜姬", "雀之羽丫", "少年", "深海", "镜姬岛",
+                                     "挽回", "对丶是初恋", "吱吱猫的",
+                                     "魔法披风", "云里来雾里", "玉米糊糊", "石之海", "SOS", "鏡姬岛", "78", "映月神社",
+                                     "yurl", "樱花醉春", "月光石",
+                                     "早睡早起", "一沐璃", "清梦", "喵喵幼稚园", "守夜人", "九亿少女梦", "清梦",
+                                     "洛克丶王国", "蝶恋花", "LM78", "1M78", "IM78",
+                                     "哆啦B梦", "天空", "背水一战", "橘势", "轮回", "杨桃大王", "招财进宝", "三十",
+                                     "江南雨", "帐中妖", "渔渔子", "秋水一色", "殊漓", "十七", "七月七日晴", "守夜人",
+                                     "夏弥的吻", "鬼兵良将", "如是我闻", "SDS", "临江", "桃花花", ]
+                if dokan_name in welfare_name_list or "鑫鑫子" in dokan_name:
+                    logger.info(f"✅ 开启福利道馆: 名称:{dokan_name},资金:{bounty}")
+                    self.dokan_quit = True
+                    return True
+                # if bounty < self.config.dokan.dokan_config.min_bounty:
+                #     logger.warning(f"寮资金{bounty}少于{self.config.dokan.dokan_config.min_bounty},不符合要求")
+                #     continue
                 # 馆主不是修习等级的
-                if not self.appear(self.I_CENTER_GUANZHU_XIUXI):
-                    continue
-                logger.info(f"find_dokan: bounty:{bounty},people_num:{p_num},score:{bounty / p_num}")
-                return True
+                # if not self.appear(self.I_CENTER_GUANZHU_XIUXI):
+                #     logger.warning(f"馆主不是修习等级的,不符合要求")
+                #     continue
+                # logger.info(f"已找到符合要求的道馆")
+                # logger.info(f"准备开启道馆: 名称:{dokan_name},资金:{bounty},人数:{p_num},系数:{item_score}")
+                # return True
             # 在所有列表中都没有符合的,且忽略系数限制,那么就选择最低分数的那个,点击显示挑战按钮
             if ignore_score:
                 x, y, w, h = bounty_list[idx_selected]
                 while 1:
-                    self.screenshot()
-                    if self.appear(self.I_CENTER_CHALLENGE):
-                        return True
                     self.device.click(x, y)
                     sleep(0.5)
+                    self.screenshot()
+                    if self.appear(self.I_CENTER_CHALLENGE):
+                        logger.info(f"选择当前列表中系数最低的{min_score}")
+                        return True
             return False
         while num_fresh < self.config.dokan.dokan_config.find_dokan_refresh_count:
             for i in range(3):

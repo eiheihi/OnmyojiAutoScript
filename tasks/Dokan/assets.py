@@ -183,7 +183,8 @@ class DokanAssets:
 	O_DOKAN_CENTER_PEOPLE_NUMBER = RuleOcr(roi=(0,0,0,0), area=(0,0,0,0), mode="Full", method="Default", keyword="", name="dokan_center_people_number")
 	# 道馆失败CD 
 	O_DOKEN_FAIL_CD = RuleOcr(roi=(1066,499,193,31), area=(1061,490,207,47), mode="Full", method="Default", keyword="", name="doken_fail_cd")
-
+	# 查找道馆时,右侧边栏中的寮名称
+	O_DOKAN_RIGHTPAD_NAME = RuleOcr(roi=(0,0,0,0), area=(0,0,0,0), mode="Single", method="Default", keyword="", name="dokan_rightpad_name")
 
 	# Swipe Rule Assets
 	# 道馆选择界面 右侧侧边栏 手指向上滑动 
