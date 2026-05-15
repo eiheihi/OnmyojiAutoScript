@@ -170,6 +170,8 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
             self.switch_soul_in_dokan('member')  # 切换馆员御魂
             self.device.click_record_clear()
             return
+        if self.appear(self.I_DOKAN_BOSS_WAITING):
+            sleep(70)
         if not self.appear(self.I_DOKAN_BOSS_WAITING) and self.appear(self.I_RYOU_DOKAN_MASTER_BATTLE) and \
                 self.appear(self.I_RYOU_DOKAN_START_CHALLENGE):  # 馆主可挑战
             count = self.conf.attack_count_config.attack_dokan_master_count()
@@ -329,9 +331,10 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
 
                 self.O_DOKAN_RIGHTPAD_NAME.roi = position_offset(item, (-37, 29, 127, 0))
                 dokan_name = self.O_DOKAN_RIGHTPAD_NAME.ocr(self.device.image)
-                # 只去除首尾的非汉字字符，保留中间的所有内容
-                dokan_name = re.sub(r'^[^\u4e00-\u9fa5]+', '', dokan_name)  # 去除开头非汉字
-                dokan_name = re.sub(r'[^\u4e00-\u9fa5]+$', '', dokan_name)  # 去除结尾非汉字
+                import re
+
+                # 一行搞定：去除首尾 非汉字、非字母
+                dokan_name = re.sub(r'^[^a-zA-Z\u4e00-\u9fa5]+|[^a-zA-Z\u4e00-\u9fa5]+$', '', dokan_name)
 
                 # 获取防守人数
                 self.screenshot()
@@ -365,13 +368,13 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
                                      "腐草为萤", "豆豆小屋", "云里来雾里", "shy粉团", "落樱", "小音の小窝", "裁酌天命",
                                      "喵喵教", "深海", "车厘子", "尸兵现身", "喵喵幼稚园", "背水一战", "回忆", "阴花雨",
                                      "伽椰子家族", "山色有无中", "蟹堡王", "一回忆", "星落屿", "石之海", "十五",
-                                     "有人小号",
+                                     "有人小号", "车厘子",
                                      "锦鲤一一", "一雾云川", "雾云川", "镜姬", "雀之羽丫", "少年", "深海", "镜姬岛",
-                                     "挽回", "对丶是初恋", "吱吱猫的",
+                                     "挽回", "对丶是初恋", "吱吱猫的", "M78",
                                      "魔法披风", "云里来雾里", "玉米糊糊", "石之海", "SOS", "鏡姬岛", "78", "映月神社",
-                                     "yurl", "樱花醉春", "月光石",
+                                     "yurl", "樱花醉春", "月光石", "满船清梦",
                                      "早睡早起", "一沐璃", "清梦", "喵喵幼稚园", "守夜人", "九亿少女梦", "清梦",
-                                     "洛克丶王国", "蝶恋花", "LM78", "1M78", "IM78",
+                                     "洛克丶王国", "蝶恋花", "LM78", "1M78", "IM78", "78", "M78",
                                      "哆啦B梦", "天空", "背水一战", "橘势", "轮回", "杨桃大王", "招财进宝", "三十",
                                      "江南雨", "帐中妖", "渔渔子", "秋水一色", "殊漓", "十七", "七月七日晴", "守夜人",
                                      "夏弥的吻", "鬼兵良将", "如是我闻", "SDS", "临江", "桃花花", ]
