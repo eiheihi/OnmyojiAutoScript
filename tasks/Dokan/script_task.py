@@ -58,7 +58,8 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
     def _exit_matcher(self) -> ExitMatcher | None:
         return pages.any_of(self.I_RYOU_DOKAN_CENTER_TOP, self.I_RYOU_DOKAN_REMAIN_ATTACK_COUNT_DONE)
 
-    def _get_battle_behavior_scopes(self, config: GeneralBattleConfig, battle_key: str) -> dict[str, BattleBehaviorScope]:
+    def _get_battle_behavior_scopes(self, config: GeneralBattleConfig, battle_key: str) -> dict[
+        str, BattleBehaviorScope]:
         scopes = super()._get_battle_behavior_scopes(config, battle_key)
         if battle_key == 'dokan_owner':
             scopes['green'] = BattleBehaviorScope.ROUND
@@ -104,7 +105,8 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
         return False
 
     def before_run(self):
-        pages.page_dokan_rank = self.navigator.add_page(pages.Page(self.I_RYOU_DOKAN_TOPPA_RANK, priority=75, register=False))
+        pages.page_dokan_rank = self.navigator.add_page(
+            pages.Page(self.I_RYOU_DOKAN_TOPPA_RANK, priority=75, register=False))
         pages.page_dokan_rank.connect(pages.page_dokan, pages.random_click, key="page_dokan_rank->page_dokan")
 
     def run(self):
@@ -331,10 +333,8 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
 
                 self.O_DOKAN_RIGHTPAD_NAME.roi = position_offset(item, (-37, 29, 127, 0))
                 dokan_name = self.O_DOKAN_RIGHTPAD_NAME.ocr(self.device.image)
-                import re
-
                 # 一行搞定：去除首尾 非汉字、非字母
-                dokan_name = re.sub(r'^[^a-zA-Z\u4e00-\u9fa5]+|[^a-zA-Z\u4e00-\u9fa5]+$', '', dokan_name)
+                dokan_name = re.sub(r'^[^a-zA-Z0-9\u4e00-\u9fa5]+|[^a-zA-Z0-9\u4e00-\u9fa5]+$', '', dokan_name)
 
                 # 获取防守人数
                 self.screenshot()
@@ -364,21 +364,33 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
                     logger.warning(f"人数{p_num}少于{self.config.dokan.dokan_config.min_people_num},不符合要求")
                     continue
                 welfare_name_list = ["叶落苑", "鬼王鑫鑫子", "三丫小窝", "堡家军", "人前显圣", "棱镜", "我独自升级",
-                                     "全部起床",
-                                     "腐草为萤", "豆豆小屋", "云里来雾里", "shy粉团", "落樱", "小音の小窝", "裁酌天命",
+                                     "全部起床", "yuri", "Lyuri",
+                                     "腐草为萤", "豆豆小屋", "云里来雾里", "shy粉团", "小音の小窝", "裁酌天命",
+                                     "时光在再", "百万囤图鼠",
                                      "喵喵教", "深海", "车厘子", "尸兵现身", "喵喵幼稚园", "背水一战", "回忆", "阴花雨",
+                                     "还能撑多久", "百万图囤鼠",
                                      "伽椰子家族", "山色有无中", "蟹堡王", "一回忆", "星落屿", "石之海", "十五",
-                                     "有人小号", "车厘子",
+                                     "生稀盐酸", "百万图图鼠",
+                                     "有人小号", "甜心斗鱼姜", "还能撑多久", "陪你去流浪", "蚍蜉渡海", "吱吱猫的",
+                                     "时光荏苒",
                                      "锦鲤一一", "一雾云川", "雾云川", "镜姬", "雀之羽丫", "少年", "深海", "镜姬岛",
-                                     "挽回", "对丶是初恋", "吱吱猫的", "M78",
-                                     "魔法披风", "云里来雾里", "玉米糊糊", "石之海", "SOS", "鏡姬岛", "78", "映月神社",
-                                     "yurl", "樱花醉春", "月光石", "满船清梦",
+                                     "岐岐猫的",
+                                     "挽回", "对丶是初恋", "吱吱猫的", "M78", "百万囤囤鼠", "甜心奶龙家",
+                                     "三途狸狸子", "时光在尊",
+                                     "魔法披风", "云里来雾里", "玉米糊糊", "石之海", "SOS", "鏡姬岛", "映月神社",
+                                     "三途狸猩子",
+                                     "yurl", "樱花醉春", "月光石", "满船清梦", "陪你去流浪", "张信哲粉丝", "三途猩狸子",
+                                     "吃饭大王",
                                      "早睡早起", "一沐璃", "清梦", "喵喵幼稚园", "守夜人", "九亿少女梦", "清梦",
-                                     "洛克丶王国", "蝶恋花", "LM78", "1M78", "IM78", "78", "M78",
+                                     "三途豚豚", "龙龙大王",
+                                     "洛克丶王国", "蝶恋花", "LM78", "1M78", "IM78", "78", "M78", "三途猩猩子",
+                                     "甜心主教", "恋如雨止",
                                      "哆啦B梦", "天空", "背水一战", "橘势", "轮回", "杨桃大王", "招财进宝", "三十",
+                                     "荒河", "化物语",
                                      "江南雨", "帐中妖", "渔渔子", "秋水一色", "殊漓", "十七", "七月七日晴", "守夜人",
-                                     "夏弥的吻", "鬼兵良将", "如是我闻", "SDS", "临江", "桃花花", ]
-                if dokan_name in welfare_name_list or "鑫鑫子" in dokan_name:
+                                     "无限城", "邪马台",
+                                     "夏弥的吻", "鬼兵良将", "如是我闻", "SDS", "临江", "桃花花", "派对动物", ]
+                if dokan_name in welfare_name_list or "鑫鑫子" in dokan_name or "猩猩子" in dokan_name:
                     logger.info(f"✅ 开启福利道馆: 名称:{dokan_name},资金:{bounty}")
                     self.dokan_quit = True
                     return True
@@ -403,6 +415,7 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
                         logger.info(f"选择当前列表中系数最低的{min_score}")
                         return True
             return False
+
         while num_fresh < self.config.dokan.dokan_config.find_dokan_refresh_count:
             for i in range(3):
                 sleep(3)
@@ -635,7 +648,8 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
                 self.set_next_run(task="Dokan", server=False,
                                   target=datetime.combine(now.date() + timedelta(days=7 - now.weekday()), run_time))
                 return
-            self.set_next_run(task="Dokan", server=False, target=datetime.combine(now.date() + timedelta(days=1), run_time))
+            self.set_next_run(task="Dokan", server=False,
+                              target=datetime.combine(now.date() + timedelta(days=1), run_time))
             return
         # 道馆没有开启
         if not is_dokan_activated:
