@@ -707,9 +707,9 @@ class GeneralBattle(GeneralBuff, GeneralBattleAssets):
             BattleAction: 根据结算收尾状态推导出的动作决策。
         """
         # 非连战且设置了退出检测器, 则根据退出检测器检测是否已经退出
-        if not config.continuous_battle and exit_matcher is not None and self._evaluate_exit_matcher(exit_matcher):
-            logger.info("Exit matcher hit")
-            return BattleAction.EXIT_WIN if context.is_win else BattleAction.EXIT_LOSE
+        # if not config.continuous_battle and exit_matcher is not None and self._evaluate_exit_matcher(exit_matcher):
+        #     logger.info("Exit matcher hit")
+        #     return BattleAction.EXIT_WIN if context.is_win else BattleAction.EXIT_LOSE
         # 上个页面还是战斗中的页面但此时是未知界面, 且奖励计时也未开启, 则认为当前是页面抖动继续战斗(式神助战...)
         if context.last_page is None or (context.last_page in {page_battle_prepare, page_battle} and
                                          context.reward_no_battle_ts is None):

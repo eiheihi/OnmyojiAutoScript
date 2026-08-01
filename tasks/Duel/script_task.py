@@ -161,7 +161,7 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
         """等待战斗结束, 返回战斗结果, 最后会退出到斗技主界面"""
         logger.hr('duel battle waiting')
         battle_operated = False
-        battle_timeout_timer = Timer(270).start()
+        battle_timeout_timer = Timer(2700).start()
         ret_timer = Timer(5)
         battle_timeout_cnt, max_timeout_cnt = 0, 3
         ret = None
