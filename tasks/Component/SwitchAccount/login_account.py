@@ -119,10 +119,21 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
                 # 此时 tmp 内存储的时角色名位置,而点击角色名没有反应
                 # 所以需要获取到对应的服务器图标位置
                 tmpClick.roi_front[1] -= 30
-                self.ui_click_until_disappear(tmpClick, stop=self.I_SA_CHECK_SELECT_SVR_2,
-                                              interval=3)
-                logger.info("character %s found,and clicked svr icon", characterName)
-                return True
+                # I_SA_CHECK_SELECT_SVR_2 只在角色图标成功展开且模板匹配成功时出现。
+                # 旧逻辑把它当作点击前置条件：模板未匹配时会一次也不点击，随后却返回 True。
+                # 这里无条件执行点击，并用选择服务器界面的 OCR 标志确认界面确实关闭。
+                for attempt in range(3):
+                    self.click(tmpClick)
+                    time.sleep(0.5)
+                    self.screenshot()
+                    if not self.ocr_appear(self.O_SA_CHECK_SELECT_SVR):
+                        logger.info("character %s selected after %s click(s)", characterName, attempt + 1)
+                        return True
+                    logger.warning("character %s click did not close server selector, retrying", characterName)
+
+                logger.warning("character %s found, but selection was not confirmed", characterName)
+                self.click(self.C_SA_LOGIN_FORM_CANCEL_SVR_SELECT, 1.5)
+                return False
             if lastCharacterNameList == characterNameList:
                 break
             logger.info(f'{characterName} not found,start swipe')
