@@ -19,33 +19,27 @@ class ScriptTask(GameUi, FindJadeAssets):
         for accountInfo in self.fade_conf.sup_account_list:
             logger.info("start %s-%s ", accountInfo.character, accountInfo.svr)
             if not self.is_need_login(accountInfo):
-                logger.warning("%s Skipped last Login Time:%s", accountInfo.character, accountInfo.last_complete_time)
+                logger.warning("%s Skipped last Login Time:%s", accountInfo.character, accountInfo.svr)
                 continue
+
+            # ====================== 核心修改 ======================
+            # 只执行：切换账号登录
             suc = SwitchAccount(self.config, self.device, accountInfo).switchAccount()
             if not suc:
                 logger.warning("switch to %s-%s Failed", accountInfo.character, accountInfo.svr)
                 continue
-            #
-            wq = self.CreatObjectFromModule("WantedQuests", config=self.config, device=self.device)
-            wq.fade_conf = self.fade_conf
 
-            try:
-                wq.run()
-            except TaskEnd as e:
-                logger.warning("%s-%s TaskEnd", accountInfo.character, accountInfo.svr)
-                # 更新配置文件中的时间
-                self.fade_conf.update_account_login_history(accountInfo)
-                self.save_config()
-                continue
-            except RequestHumanTakeover as e:
-                raise
-            except Exception as e:
-                logger.error(e)
-                self.next_run("FindJade", success=False)
+            # 登录成功 → 直接标记完成，不做任何任务
+            logger.info("%s-%s 登录成功，直接切换下一个账号", accountInfo.character, accountInfo.svr)
+
+            # 更新时间（保持原有逻辑）
+            self.fade_conf.update_account_login_history(accountInfo)
+            self.save_config()
+            # ======================================================
+
+        # 所有账号跑完
         self.next_run("FindJade", success=True)
         raise TaskEnd("FindJade")
-        pass
-
 
     def is_need_login(self, item: AccountInfo):
         """
