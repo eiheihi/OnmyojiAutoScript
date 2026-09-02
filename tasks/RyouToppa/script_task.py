@@ -301,7 +301,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
                 logger.warning("Click failure, check your click position")
                 return False
             if self.appear_then_click(RealmRaidAssets.I_FIRE, interval=2, threshold=0.8):
-                sleep_time = random.uniform(0.3, 1)
+                sleep_time = random.uniform(0.5, 1)
                 time.sleep(sleep_time)
                 click_failure_count += 1
                 continue
