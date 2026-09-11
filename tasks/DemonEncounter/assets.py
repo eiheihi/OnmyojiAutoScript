@@ -89,7 +89,7 @@ class DemonEncounterAssets:
 	I_SUSHI = RuleImage(roi_front=(602,318,72,54), roi_back=(581,294,115,116), threshold=0.8, method="Template matching", file="./tasks/DemonEncounter/demon/demon_sushi.png")
 	# 50勾玉购买 
 	I_JADE_50 = RuleImage(roi_front=(593,425,84,46), roi_back=(548,405,182,83), threshold=0.8, method="Template matching", file="./tasks/DemonEncounter/demon/demon_jade_50.png")
-	# 逢魔之时前往现世逢魔标志 
+	# 逢魔之时前往现世逢魔标志
 	I_DE_TO_REAL_WORLD = RuleImage(roi_front=(993,488,104,28), roi_back=(960,458,186,104), threshold=0.8, method="Template matching", file="./tasks/DemonEncounter/demon/demon_de_to_real_world.png")
 
 
@@ -127,6 +127,8 @@ class DemonEncounterAssets:
 	# Ocr Rule Assets
 	# 计数已经开启多少的 
 	O_DE_COUNTER = RuleOcr(roi=(1204,685,48,34), area=(1204,685,48,34), mode="DigitCounter", method="Default", keyword="", name="de_counter")
+	# 现世逢魔顶部今日挑战次数X/1的最小识别区, 0/1表示已打过直接结束 
+	O_DE_CHALLENGE_COUNT = RuleOcr(roi=(705,68,45,36), area=(705,68,45,36), mode="Full", method="Default", keyword="", name="de_challenge_count")
 
 
 	# Click Rule Assets
