@@ -28,6 +28,44 @@ def random_normal_distribution_int(a, b, n=3):
         return b
 
 
+def _inset_roi(roi, inset_ratio=0.12, min_inset=1):
+    x, y, w, h = roi
+    x, y, w, h = int(x), int(y), int(w), int(h)
+    if w <= 0 or h <= 0:
+        return x, y, w, h
+
+    inset_x = int(round(w * inset_ratio))
+    inset_y = int(round(h * inset_ratio))
+    if w > min_inset * 2:
+        inset_x = max(min_inset, inset_x)
+    if h > min_inset * 2:
+        inset_y = max(min_inset, inset_y)
+
+    inset_x = min(inset_x, max(0, (w - 1) // 2))
+    inset_y = min(inset_y, max(0, (h - 1) // 2))
+    return x + inset_x, y + inset_y, w - inset_x * 2, h - inset_y * 2
+
+
+def random_ellipse_point(roi, inset_ratio=0.12, attempts=30):
+    """Choose a center-biased random point inside an inset ellipse within roi."""
+    x, y, w, h = _inset_roi(roi, inset_ratio=inset_ratio)
+    if w <= 1 or h <= 1:
+        return x, y
+
+    cx = x + w / 2
+    cy = y + h / 2
+    rx = w / 2
+    ry = h / 2
+
+    for _ in range(attempts):
+        px = random_normal_distribution_int(x, x + w)
+        py = random_normal_distribution_int(y, y + h)
+        if ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2 <= 1:
+            return px, py
+
+    return int(round(cx)), int(round(cy))
+
+
 def random_rectangle_point(area, n=3):
     """Choose a random point in an area.
 
@@ -938,4 +976,3 @@ def is_approx_rectangle(points, tolerance=30):
 
     # 判断角度是否接近90度
     return all(np.isclose(a, 90, atol=tolerance) for a in angles)
-
