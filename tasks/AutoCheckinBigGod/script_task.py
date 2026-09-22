@@ -4,6 +4,7 @@ import tempfile
 import threading
 import lzma
 import os
+import shlex
 import sys
 import time
 import json
@@ -248,7 +249,10 @@ class ScriptTask(ManualClaimMixin):
         if root_mode == 'adb':
             return self._adb_shell([command], timeout=timeout)
         if root_mode == 'su':
-            return self._adb_shell(['su', '-c', command], timeout=timeout)
+            # adb shell 会把参数重新拼成一条远端 shell 命令。若 command 含有
+            # 分号、重定向或 &，不整体引用会导致只有第一段经过 su，后续命令
+            # 仍以 shell 用户执行（frida-server 因此无法修改 SELinux 策略）。
+            return self._adb_shell(['su', '-c', shlex.quote(command)], timeout=timeout)
         raise RuntimeError('模拟器未提供Root权限')
 
     def _get_app_pid(self):
