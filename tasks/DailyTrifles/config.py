@@ -54,6 +54,8 @@ class DailyTriflesConfig(BaseModel):
     # 收取邮件
     pickup_email: bool = Field(default=True)
     one_summon: bool = Field(title='One Summon', default=False)
+    guild_wish: bool = Field(title='Guild Wish', default=False)
+    friend_love: bool = Field(title='Friend Love', default=False)
     # 召唤类型
     summon_type: SummonType = Field(default=SummonType.default, description='召唤类型')
     # 是否绘制神秘图案
