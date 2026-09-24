@@ -390,7 +390,7 @@ class ScriptTask(GameUi, SwitchSoul, GeneralBattle, DokanAssets):
                                      "哆啦B梦", "天空", "背水一战", "橘势", "轮回", "杨桃大王", "招财进宝", "三十",
                                      "荒河", "化物语", "夜曲", "姑苏烟雨", "逍遥阁", "半夏微凉", "结缘神社",
                                      "江南雨", "帐中妖", "渔渔子", "秋水一色", "殊漓", "十七", "七月七日晴", "守夜人",
-                                     "无限城", "邪马台", "满船清梦", "六等星",
+                                     "无限城", "邪马台", "满船清梦", "六等星", "小鑫肝",
                                      "夏弥的吻", "鬼兵良将", "如是我闻", "SDS", "临江", "桃花花", "派对动物", ]
                 if dokan_name in welfare_name_list or "鑫鑫子" in dokan_name or "猩猩子" in dokan_name:
                     logger.info(f"✅ 开启福利道馆: 名称:{dokan_name},资金:{bounty}")
