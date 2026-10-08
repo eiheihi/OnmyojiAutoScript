@@ -36,6 +36,30 @@ from tasks.GameUi.page import page_shikigami_records, page_guild, page_main, ran
 from tasks.Hyakkiyakou.utils.fast_device import FastDevice
 
 
+WELFARE_DOKAN_NAMES = {
+    "叶落苑", "鬼王鑫鑫子", "三丫小窝", "堡家军", "人前显圣", "棱镜", "我独自升级",
+    "全部起床", "yuri", "Lyuri", "豆豆小屋", "云里来雾里", "shy粉团", "小音の小窝",
+    "裁酌天命", "时光在再", "百万囤图鼠", "六等星", "喵喵教", "深海", "车厘子",
+    "尸兵现身", "喵喵幼稚园", "背水一战", "回忆", "阴花雨", "还能撑多久", "百万图囤鼠",
+    "二十七", "伽椰子家族", "山色有无中", "蟹堡王", "一回忆", "星落屿", "石之海",
+    "十五", "生稀盐酸", "百万图图鼠", "十七", "有人小号", "甜心斗鱼姜", "陪你去流浪",
+    "蚍蜉渡海", "吱吱猫的", "时光荏苒", "派对动物", "锦鲤一一", "一雾云川", "雾云川",
+    "镜姬", "雀之羽丫", "少年", "镜姬岛", "岐岐猫的", "苦来兮苦", "破晓", "幸福美满",
+    "无限城", "挽回", "对丶是初恋", "M78", "百万囤囤鼠", "甜心奶龙家", "三途狸狸子",
+    "时光在尊", "龙龙大王", "回不了从前", "魔法披风", "玉米糊糊", "SOS", "鏡姬岛",
+    "映月神社", "三途狸猩子", "苦来今苦", "化物语", "大帅王朝", "樱途", "祈雪",
+    "yurl", "樱花醉春", "月光石", "满船清梦", "张信哲粉丝", "三途猩狸子", "吃饭大王",
+    "哆啦A梦", "早睡早起", "一沐璃", "清梦", "守夜人", "九亿少女梦", "三途豚豚",
+    "背水一战1", "凉风有信", "病名為愛", "洛克丶王国", "蝶恋花", "LM78", "1M78",
+    "IM78", "78", "三途猩猩子", "甜心主教", "恋如雨止", "哆啦B梦", "天空", "橘势",
+    "轮回", "杨桃大王", "招财进宝", "三十", "荒河", "夜曲", "姑苏烟雨", "逍遥阁",
+    "半夏微凉", "结缘神社", "江南雨", "帐中妖", "渔渔子", "秋水一色", "殊漓",
+    "七月七日晴", "邪马台", "小鑫肝", "夏弥的吻", "鬼兵良将", "如是我闻", "SDS",
+    "临江", "桃花花", "哆啦A梦",
+}
+WELFARE_DOKAN_KEYWORDS = ("鑫鑫子", "猩猩子")
+
+
 class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
     medal_grid: ImageGrid = None
     attack_priority_selected: bool = False
@@ -637,6 +661,17 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                     logger.info(f"can't find challenge button,idx={idx} item={item}")
                     # 道馆不可挑战,挑战按钮不会弹出 ,直接进行下一个
                     continue
+                rightpad_name_ocr = RuleOcr(roi=self.position_offset(item, (-37, 29, 127, 0)),
+                                            area=self.position_offset(item, (-37, 29, 127, 0)),
+                                            mode="Single", method="Default", keyword="",
+                                            name="dokan_rightpad_name")
+                dokan_name = rightpad_name_ocr.ocr(self.device.image)
+                dokan_name = re.sub(r'^[^a-zA-Z0-9\u4e00-\u9fa5]+|[^a-zA-Z0-9\u4e00-\u9fa5]+$', '', dokan_name)
+                if dokan_name not in WELFARE_DOKAN_NAMES and not any(
+                        keyword in dokan_name for keyword in WELFARE_DOKAN_KEYWORDS):
+                    logger.info(f"skip non-welfare dokan: name={dokan_name}, bounty={bounty}")
+                    continue
+                logger.info(f"find welfare dokan: name={dokan_name}, bounty={bounty}")
                 # 获取防守人数
                 self.screenshot()
                 if not self.appear(self.I_CENTER_POINT_PEOPLE_NUMBER):
@@ -661,38 +696,48 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                     min_score = item_score
                     idx_selected = idx
                 # 大于系数 或者 系数过小(文字识别错误导致)
-                if item_score > score or item_score < 1.5:
-                    logger.info("click to making challenge disappear")
-                    continue
-                if p_num < self.config.dokan.dokan_config.min_people_num:
-                    logger.info("people num too small")
-                    continue
-                if bounty < self.config.dokan.dokan_config.min_bounty:
-                    logger.info("bounty too small")
-                    continue
-                # 馆主不是修习等级的
-                if not self.appear(self.I_CENTER_GUANZHU_XIUXI):
-                    continue
+                # if item_score > score or item_score < 1.5:
+                #     logger.info("click to making challenge disappear")
+                #     continue
+                # if p_num < self.config.dokan.dokan_config.min_people_num:
+                #     logger.info("people num too small")
+                #     continue
+                # if bounty < self.config.dokan.dokan_config.min_bounty:
+                #     logger.info("bounty too small")
+                #     continue
+                # # 馆主不是修习等级的
+                # if not self.appear(self.I_CENTER_GUANZHU_XIUXI):
+                #     continue
                 logger.info(f"find_dokan: bounty:{bounty},people_num:{p_num},score:{bounty / p_num}")
-                return True
+                return item
             # 在所有列表中都没有符合的,且忽略系数限制,那么就选择最低分数的那个,点击显示挑战按钮
             if ignore_score:
-                x, y, w, h = bounty_list[idx_selected]
-                while 1:
-                    self.screenshot()
-                    if self.appear(self.I_CENTER_CHALLENGE):
-                        return True
-                    self.device.click(x, y)
-                    sleep(0.5)
+                logger.warning("can't find welfare dokan in current list, skip fallback selection")
+            return False
+
+        def challenge_selected_dokan(selected_item):
+            for retry in range(3):
+                self.screenshot()
+                if not self.appear(self.I_CENTER_CHALLENGE):
+                    logger.warning(f"challenge button disappeared, reselect welfare dokan, retry={retry + 1}")
+                    self.I_RIGHTPAD_POINT_BOUNTY.roi_back = self.position_offset(selected_item, (-10, -10, 20, 20))
+                    self.ui_click_until_appear_or_timeout(self.I_RIGHTPAD_POINT_BOUNTY, self.I_CENTER_CHALLENGE,
+                                                          interval=1, timeout=5)
+                if self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1, timeout=3):
+                    self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
+                    return True
+            logger.warning("failed to click challenge button for welfare dokan")
             return False
 
         while num_fresh < self.config.dokan.dokan_config.find_dokan_refresh_count:
             for i in range(3):
                 sleep(3)
-                if find_challengeable():
+                selected_item = find_challengeable()
+                if selected_item:
                     logger.info("find challengeable dokan")
-                    self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1)
-                    self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
+                    if not challenge_selected_dokan(selected_item):
+                        restore_roi()
+                        continue
                     # 更新可挑战次数
                     self.config.dokan.attack_count_config.del_attack_count(1, self.config.save)
                     # 恢复初始位置信息,防止下次使用出错
@@ -710,11 +755,11 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             logger.info("Refresh Done")
             num_fresh += 1
 
-        # 刷新次数用完,仍未找到符合条件的道馆,选择当前列表(约4个)中系数最低的
-        if find_challengeable(ignore_score=True):
-            logger.warning("can't find challengeable dokan,select random one")
-            self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1)
-            self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
+        # 刷新次数用完仍未找到福利寮时直接退出，不开启普通寮
+        selected_item = find_challengeable(ignore_score=True)
+        if selected_item:
+            if not challenge_selected_dokan(selected_item):
+                return False
             # 更新可挑战次数
             self.config.dokan.attack_count_config.del_attack_count(1, self.config.save)
             return True
