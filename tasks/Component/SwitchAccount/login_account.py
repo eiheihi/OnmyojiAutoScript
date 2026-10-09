@@ -246,6 +246,7 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
         #
         isAccountLogon = False
         isCharacterSelected = False
+        user_center_probe_count = 0
         self.O_SA_ACCOUNT_ACCOUNT_SELECTED.keyword = accountInfo.account
         self.O_SA_LOGIN_FORM_USER_CENTER_ACCOUNT.keyword = accountInfo.account
         while 1:
@@ -297,6 +298,13 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
             if not (self.appear(self.I_SA_NETEASE_GAME_LOGO) or self.appear(self.I_SA_SWITCH_ACCOUNT_BTN)):
                 # 判断是否已经账号登录
                 if not isAccountLogon:
+                    if user_center_probe_count >= 3 and self.appear(self.I_CHECK_LOGIN_FORM, interval=0.6):
+                        logger.warning(
+                            "User center did not open on login form; click enter game and continue login handling"
+                        )
+                        self.click(self.C_SA_LOGIN_FORM_ENTER_GAME_BTN, interval=1.5)
+                        return True
+                    user_center_probe_count += 1
                     self.click(self.C_SA_LOGIN_FORM_USER_CENTER)
                     continue
 
@@ -314,7 +322,11 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
             isCharacterSelected = self.switch_svr(accountInfo.svr)
         if isAccountLogon and isCharacterSelected:
             # 成功登录账号 找到角色
-            # self.ui_click_until_disappear(self.C_SA_LOGIN_FORM_ENTER_GAME_BTN, stop=self.I_CHECK_LOGIN_FORM)
+            self.ui_click_until_disappear(
+                self.C_SA_LOGIN_FORM_ENTER_GAME_BTN,
+                interval=1.5,
+                stop=self.I_CHECK_LOGIN_FORM,
+            )
             logger.info("character %s-%s account:%s %s login Success", accountInfo.character, accountInfo.svr,
                         accountInfo.account,
                         'Android' if accountInfo.apple_or_android else 'Apple')

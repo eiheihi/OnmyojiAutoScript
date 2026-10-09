@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from module.exception import TaskEnd, RequestHumanTakeover
 from module.logger import logger
 from tasks.Component.SwitchAccount.switch_account import SwitchAccount
+from tasks.DailyTrifles.script_task import ScriptTask as DailyTriflesTask
 from tasks.FindJade import WantedQuestsEx
 from tasks.FindJade.assets import FindJadeAssets
 from tasks.FindJade.config import AccountInfo, FindJade
@@ -28,9 +29,11 @@ class ScriptTask(GameUi, FindJadeAssets):
             if not suc:
                 logger.warning("switch to %s-%s Failed", accountInfo.character, accountInfo.svr)
                 continue
+            logger.info("%s-%s login suc, run DailyTrifles before switching next account",
+                        accountInfo.character, accountInfo.svr)
+            self._run_daily_trifles_after_login(accountInfo)
 
-            # 登录成功 → 直接标记完成，不做任何任务
-            logger.info("%s-%s 登录成功，直接切换下一个账号", accountInfo.character, accountInfo.svr)
+            logger.info("%s-%s 登录成功，每日琐事处理完成，准备切换下一个账号", accountInfo.character, accountInfo.svr)
 
             # 更新时间（保持原有逻辑）
             self.fade_conf.update_account_login_history(accountInfo)
@@ -40,6 +43,16 @@ class ScriptTask(GameUi, FindJadeAssets):
         # 所有账号跑完
         self.next_run("FindJade", success=True)
         raise TaskEnd("FindJade")
+
+    def _run_daily_trifles_after_login(self, account_info: AccountInfo):
+        if not self.config.model.restart.restart_config.enable_daily:
+            logger.info("DailyTrifles disabled by restart_config.enable_daily")
+            return
+
+        try:
+            DailyTriflesTask(config=self.config, device=self.device).run()
+        except TaskEnd:
+            logger.info("%s-%s DailyTrifles finished", account_info.character, account_info.svr)
 
     def is_need_login(self, item: AccountInfo):
         """
