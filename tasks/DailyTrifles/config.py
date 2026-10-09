@@ -1,11 +1,11 @@
 # This Python file uses the following encoding: utf-8
 # @author runhey
 # github https://github.com/runhey
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 
 from tasks.Component.config_scheduler import Scheduler
-from tasks.Component.config_base import ConfigBase, dynamic_hide
+from tasks.Component.config_base import ConfigBase, DateTime, dynamic_hide
 from enum import Enum
 
 
@@ -14,7 +14,12 @@ class SummonType(str, Enum):
     recall = '今忆召唤'
 
 
+class DoneRecord(ConfigBase):
+    courtyard_affairs_dt: DateTime = Field(default=datetime.fromisoformat("2023-01-01 00:00:00"))
+
+
 class DailyTriflesConfig(BaseModel):
+    courtyard_affairs: bool = Field(default=True)
     one_summon: bool = Field(title='One Summon', default=False)
     # 召唤类型
     summon_type: SummonType = Field(default=SummonType.default, description='召唤类型')
@@ -33,3 +38,12 @@ class DailyTriflesConfig(BaseModel):
 class DailyTrifles(ConfigBase):
     scheduler: Scheduler = Field(default_factory=Scheduler)
     trifles_config: DailyTriflesConfig = Field(default_factory=DailyTriflesConfig)
+    done_record: DoneRecord = Field(default_factory=DoneRecord)
+
+    hide_fields = dynamic_hide('done_record')
+
+    def today_is_done(self, mode: str) -> bool:
+        done_dt = getattr(self.done_record, f'{mode}_dt', None)
+        if done_dt is None:
+            return False
+        return done_dt.date() == datetime.today().date()

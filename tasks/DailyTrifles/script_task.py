@@ -10,7 +10,7 @@ from tasks.DailyTrifles.page import page_store_gift_room
 from winerror import NOERROR
 
 from tasks.GameUi.game_ui import GameUi
-from tasks.GameUi.page import page_main, page_summon, page_guild, page_mall, page_friends
+from tasks.GameUi.page import page_main, page_summon, page_guild, page_mall, page_friends, page_courtyard_affairs
 from tasks.DailyTrifles.config import DailyTriflesConfig
 from tasks.DailyTrifles.assets import DailyTriflesAssets
 from tasks.Component.Summon.summon import Summon
@@ -25,6 +25,8 @@ class ScriptTask(GameUi, Summon, DailyTriflesAssets):
 
     def run(self):
         con = self.config.daily_trifles.trifles_config
+        if con.courtyard_affairs:
+            self.run_courtyard_affairs()
         # 每日召唤
         if con.one_summon:
             self.run_one_summon()
@@ -41,6 +43,43 @@ class ScriptTask(GameUi, Summon, DailyTriflesAssets):
             self.run_store()
         self.set_next_run('DailyTrifles', success=True, finish=False)
         raise TaskEnd('DailyTrifles')
+
+    def run_courtyard_affairs(self):
+        if self.config.daily_trifles.today_is_done('courtyard_affairs'):
+            logger.info('Courtyard affairs already done today')
+            return
+
+        self.get_current_page()
+        self.goto_page(page_courtyard_affairs)
+
+        while 1:
+            self.screenshot()
+            if self.appear(self.I_CHECK_IN_DAILY):
+                break
+            if self.appear_then_click(self.I_ENTER_DAILY, interval=1):
+                continue
+            break
+
+        logger.info('Start courtyard affairs')
+        check_timer = Timer(3)
+        check_timer.start()
+        reward_received = False
+        while 1:
+            self.screenshot()
+            if self.appear_then_click(self.I_ONE_COMPLETE, interval=1):
+                continue
+            if self.ui_reward_appear_click():
+                logger.info('Get reward of courtyard affairs')
+                reward_received = True
+                break
+            if check_timer.reached():
+                logger.warning('There is no courtyard affairs reward')
+                break
+
+        if reward_received:
+            self.config.daily_trifles.done_record.courtyard_affairs_dt = datetime.now()
+            self.config.save()
+        self.goto_page(page_main)
 
     def run_one_summon(self):
         self.goto_page(page_summon)

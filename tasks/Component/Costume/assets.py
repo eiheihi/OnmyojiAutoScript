@@ -145,6 +145,12 @@ class CostumeAssets:
 	I_PET_HOUSE_17_B = RuleImage(roi_front=(1251,417,19,45), roi_back=(1231,366,49,124), threshold=0.8, method="Template matching", file="./tasks/Component/Costume/main17/main17_pet_house_17_b.png")
 	# 宠物屋 c 
 	I_PET_HOUSE_17_C = RuleImage(roi_front=(1248,406,19,59), roi_back=(1228,340,52,176), threshold=0.8, method="Template matching", file="./tasks/Component/Costume/main17/main17_pet_house_17_c.png")
+	# courtyard affairs a
+	I_ENTER_COURTYARD_AFFAIRS_17_A = RuleImage(roi_front=(480,475,28,31), roi_back=(440,440,110,100), threshold=0.8, method="Template matching", file="./tasks/DailyTrifles/dt/dt_enter_courtyard_affairs.png")
+	# courtyard affairs b
+	I_ENTER_COURTYARD_AFFAIRS_17_B = RuleImage(roi_front=(480,475,28,31), roi_back=(440,440,110,100), threshold=0.8, method="Template matching", file="./tasks/DailyTrifles/dt/dt_enter_courtyard_affairs.png")
+	# courtyard affairs c
+	I_ENTER_COURTYARD_AFFAIRS_17_C = RuleImage(roi_front=(480,475,28,31), roi_back=(440,440,110,100), threshold=0.8, method="Template matching", file="./tasks/DailyTrifles/dt/dt_enter_courtyard_affairs.png")
 
 
 	# Image Rule Assets
@@ -249,5 +255,4 @@ class CostumeAssets:
 	I_MAIN_GOTO_TOWN_9 = RuleImage(roi_front=(684,342,41,42), roi_back=(276,321,999,78), threshold=0.7, method="Template matching", file="./tasks/Component/Costume/main9/main9_main_goto_town_9.png")
 	# description 
 	I_PET_HOUSE_9 = RuleImage(roi_front=(888,327,40,35), roi_back=(730,316,440,57), threshold=0.8, method="Template matching", file="./tasks/Component/Costume/main9/main9_pet_house_9.png")
-
 

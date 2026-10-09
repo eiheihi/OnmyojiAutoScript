@@ -11,6 +11,19 @@ class DailyTriflesAssets:
 
 
 	# Image Rule Assets
+	# 进入庭院事务标志
+	I_ENTER_COURTYARD_AFFAIRS = RuleImage(roi_front=(990,372,25,30), roi_back=(696,349,343,231), threshold=0.8, method="Template matching", file="./tasks/DailyTrifles/dt/dt_enter_courtyard_affairs.png")
+	# 庭院事务页面标志
+	I_CHECK_COURTYARD_AFFAIRS = RuleImage(roi_front=(254,40,196,57), roi_back=(134,0,415,180), threshold=0.8, method="Template matching", file="./tasks/DailyTrifles/dt/dt_check_courtyard_affairs.png")
+	# 一键完成标志
+	I_ONE_COMPLETE = RuleImage(roi_front=(1114,589,93,93), roi_back=(1083,562,163,139), threshold=0.8, method="Template matching", file="./tasks/DailyTrifles/dt/dt_one_complete.png")
+	# 右上角进入日常
+	I_ENTER_DAILY = RuleImage(roi_front=(1131,122,84,76), roi_back=(1117,98,136,226), threshold=0.8, method="Template matching", file="./tasks/DailyTrifles/dt/dt_enter_daily.png")
+	# 右上角检查是否在日常中
+	I_CHECK_IN_DAILY = RuleImage(roi_front=(1131,115,106,88), roi_back=(1128,94,151,281), threshold=0.8, method="Template matching", file="./tasks/DailyTrifles/dt/dt_check_in_daily.png")
+
+
+	# Image Rule Assets
 	# description 
 	I_L_FRIENDS = RuleImage(roi_front=(67,625,70,72), roi_back=(67,625,70,72), threshold=0.9, method="Template matching", file="./tasks/DailyTrifles/love/love_l_friends.png")
 	# description 
@@ -73,5 +86,4 @@ class DailyTriflesAssets:
 	O_SELECT_SM4 = RuleOcr(roi=(26,397,45,38), area=(26,397,45,38), mode="Single", method="Default", keyword="", name="select_sm4")
 	# 吉闻 
 	O_LUCK_MSG = RuleOcr(roi=(15,38,70,70), area=(15,38,70,70), mode="Single", method="Default", keyword="吉闻", name="luck_msg")
-
 
