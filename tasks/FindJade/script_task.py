@@ -1,4 +1,5 @@
 import importlib
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 
 from module.exception import TaskEnd, RequestHumanTakeover
@@ -22,7 +23,8 @@ class ScriptTask(GameUi, FindJadeAssets):
             if not self.is_need_login(accountInfo):
                 logger.warning("%s Skipped last Login Time:%s", accountInfo.character, accountInfo.last_complete_time)
                 continue
-            suc = SwitchAccount(self.config, self.device, accountInfo).switchAccount()
+            with self._temporary_running_task(''):
+                suc = SwitchAccount(self.config, self.device, accountInfo).switchAccount()
             if not suc:
                 logger.warning("switch to %s-%s Failed", accountInfo.character, accountInfo.svr)
                 continue
@@ -56,9 +58,19 @@ class ScriptTask(GameUi, FindJadeAssets):
             return
 
         try:
-            DailyTriflesTask(config=self.config, device=self.device).run()
+            with self._temporary_running_task('DailyTrifles'):
+                DailyTriflesTask(config=self.config, device=self.device).run()
         except TaskEnd:
             logger.info("%s-%s DailyTrifles finished", account_info.character, account_info.svr)
+
+    @contextmanager
+    def _temporary_running_task(self, task_name: str):
+        previous = getattr(self.config.model, 'running_task', '')
+        object.__setattr__(self.config.model, 'running_task', task_name)
+        try:
+            yield
+        finally:
+            object.__setattr__(self.config.model, 'running_task', previous)
 
     def is_need_login(self, item: AccountInfo):
         """
