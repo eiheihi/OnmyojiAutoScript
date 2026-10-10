@@ -67,6 +67,15 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
         self.click_preset()
         self.switch_souls(target)
 
+    def switch_sure_appear(self) -> bool:
+        return self.appear(self.I_SOU_SWITCH_SURE) or self.appear(self.I_SOU_SWITCH_SURE_NEW)
+
+    def switch_sure_click(self, interval: float = 0.8) -> bool:
+        return (
+            self.appear_then_click(self.I_SOU_SWITCH_SURE, interval=interval)
+            or self.appear_then_click(self.I_SOU_SWITCH_SURE_NEW, interval=interval)
+        )
+
     def click_preset(self) -> None:
         """
         点击预设
@@ -154,19 +163,24 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
         for i in range(3):
             sleep(0.8)
             self.screenshot()
-            if self.appear(self.I_SOU_SWITCH_SURE):
+            if self.switch_sure_appear():
                 while 1:
-                    self.click(self.I_SOU_SWITCH_SURE, 3)
+                    self.switch_sure_click()
                     self.screenshot()
                     if self.appear_then_click(self.I_CHECK_BLOCK, 3):
                         continue
-                    if not self.appear(self.I_SOU_SWITCH_SURE):
+                    if not self.switch_sure_appear():
                         break
                 continue
             if not self.appear_then_click(target_team, interval=3):
                 logger.warning(f'Click team {team} failed in group {group}')
         # 兜底若还出现确认按钮则点击
-        self.ui_click_until_disappear(self.I_SOU_SWITCH_SURE)
+        while 1:
+            self.screenshot()
+            if not self.switch_sure_appear():
+                break
+            if self.switch_sure_click():
+                continue
         logger.info(f'Switch soul_one group {group} team {team}')
 
     def switch_souls(self, target: tuple or list[tuple]) -> None:
@@ -275,7 +289,7 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
             self.screenshot()
             if cnt_click >= 4:
                 break
-            if self.appear_then_click(self.I_SOU_SWITCH_SURE, interval=0.8):
+            if self.switch_sure_click():
                 continue
             if self.ocr_appear_click_by_rule(self.O_SS_TEAM_NAME, self.I_SOU_CLICK_PRESENT, interval=1.5):
                 cnt_click += 1

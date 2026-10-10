@@ -9,6 +9,15 @@
     "description": "长一点的确认"
   },
   {
+    "itemName": "ui_confirm_new",
+    "imageName": "ui_ui_confirm_new.png",
+    "roiFront": "668,401,180,61",
+    "roiBack": "668,401,180,61",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "new confirm style"
+  },
+  {
     "itemName": "ui_cancel",
     "imageName": "ui_ui_cancel.png",
     "roiFront": "432,403,177,62",
