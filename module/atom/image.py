@@ -16,7 +16,6 @@ from module.base.utils.utils import random_normal_distribution_int
 
 class RuleImage(RuleImageMallResourceMixin):
     debug_mode: bool = False
-    _confirm_fallback_image = None
 
     def __init__(self, roi_front: tuple, roi_back: tuple, method: str, threshold: float, file: str) -> None:
         """
@@ -203,67 +202,6 @@ class RuleImage(RuleImageMallResourceMixin):
         logger.error("match result contains nan/inf (solid-color region), treated as not matched")
         return np.nan_to_num(result, nan=-1.0, posinf=-1.0, neginf=-1.0)
 
-    def _is_standard_confirm_button(self) -> bool:
-        stem = Path(self.file).stem.lower()
-        if not any(word in stem for word in ('confirm', 'sure', 'ensure')):
-            return False
-
-        x, y, w, h = self.roi_back
-        return (
-            620 <= x <= 720
-            and 360 <= y <= 430
-            and 100 <= w <= 230
-            and 40 <= h <= 90
-        )
-
-    @classmethod
-    def _load_confirm_fallback_image(cls):
-        if cls._confirm_fallback_image is not None:
-            return cls._confirm_fallback_image
-
-        fallback_file = Path("./tasks/GlobalGame/ui/ui_ui_confirm_new.png")
-        if not fallback_file.exists():
-            return None
-        img = cv2.imdecode(fromfile(str(fallback_file), dtype=uint8), -1)
-        if img is None:
-            return None
-        cls._confirm_fallback_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        return cls._confirm_fallback_image
-
-    def _match_confirm_fallback(self, image: np.array, threshold: float) -> bool:
-        if not self._is_standard_confirm_button():
-            return False
-
-        mat = self._load_confirm_fallback_image()
-        if mat is None:
-            return False
-
-        x, y, w, h = self.roi_back
-        roi = (
-            max(0, int(x) - 20),
-            max(0, int(y) - 20),
-            min(image.shape[1] - max(0, int(x) - 20), int(w) + 60),
-            min(image.shape[0] - max(0, int(y) - 20), int(h) + 40),
-        )
-        source = self.corp(image, roi)
-        if mat.shape[0] > source.shape[0] or mat.shape[1] > source.shape[1]:
-            return False
-
-        res = cv2.matchTemplate(source, mat, cv2.TM_CCOEFF_NORMED)
-        res = self._sanitize_match_result(res)
-        _, max_val, _, max_loc = cv2.minMaxLoc(res)
-        self.last_score = float(max_val)
-        if self.debug_mode:
-            logger.attr(self.name, f'confirm fallback matching score {max_val:.5f}')
-
-        if max_val > threshold:
-            self.roi_front[0] = max_loc[0] + roi[0]
-            self.roi_front[1] = max_loc[1] + roi[1]
-            self.roi_front[2] = mat.shape[1]
-            self.roi_front[3] = mat.shape[0]
-            return True
-        return False
-
     def corp(self, image: np.array, roi: list = None) -> np.array:
         """
         截取图片
@@ -324,7 +262,7 @@ class RuleImage(RuleImageMallResourceMixin):
             self.roi_front[1] = max_loc[1] + self.roi_back[1]
             return True
         else:
-            return self._match_confirm_fallback(image, threshold)
+            return False
 
     def match_multi_scale(self, image: np.array, threshold: float = None,
                           scales: list = None, scale_range: tuple = None) -> bool:

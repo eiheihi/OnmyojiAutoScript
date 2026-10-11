@@ -41,8 +41,6 @@ class GlobalGameAssets:
 	# Image Rule Assets
 	# 长一点的确认 
 	I_UI_CONFIRM = RuleImage(roi_front=(667,398,179,66), roi_back=(667,398,179,66), threshold=0.8, method="Template matching", file="./tasks/GlobalGame/ui/ui_ui_confirm.png")
-	# new confirm style
-	I_UI_CONFIRM_NEW = RuleImage(roi_front=(668,401,180,61), roi_back=(668,401,180,61), threshold=0.8, method="Template matching", file="./tasks/GlobalGame/ui/ui_ui_confirm_new.png")
 	# 长一点的取消 
 	I_UI_CANCEL = RuleImage(roi_front=(432,403,177,62), roi_back=(432,403,177,62), threshold=0.8, method="Template matching", file="./tasks/GlobalGame/ui/ui_ui_cancel.png")
 	# '获得奖励' 四个大字 
@@ -67,4 +65,5 @@ class GlobalGameAssets:
 	I_UI_CHECK = RuleImage(roi_front=(564,341,40,38), roi_back=(512,329,164,78), threshold=0.8, method="Template matching", file="./tasks/GlobalGame/ui/ui_ui_check.png")
 	# 知道了 
 	I_UI_GOTIT_SMALL = RuleImage(roi_front=(678,396,127,60), roi_back=(622,371,242,100), threshold=0.8, method="Template matching", file="./tasks/GlobalGame/ui/ui_ui_gotit_small.png")
+
 
