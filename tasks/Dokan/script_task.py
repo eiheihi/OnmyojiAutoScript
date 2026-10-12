@@ -980,7 +980,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
         if not is_dokan_activated:
             # 在服务器时间之前,设置为服务器时间
             if now < ser_time:
-                self.set_next_run(task="Dokan", target=now.replace(hour=ser_time.hour, minute=ser_time.minute))
+                self.set_next_run(task="Dokan", target=now.replace(hour=ser_time.hour, minute=ser_time.minute),
+                                  server=False)
                 return
             # 在服务器时间之后,如超过两小时,则直接当作成功;未超过则当作失败
             if now - ser_time > timedelta(hours=2):
@@ -988,14 +989,17 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 return
             # 时间在道馆开启时间附近，3分钟后执行
 
-            self.set_next_run(task="Dokan", target=now + self.config.dokan.scheduler.failure_interval)
+            self.set_next_run(task="Dokan", target=now + self.config.dokan.scheduler.failure_interval,
+                              server=False)
         # 道馆已开启
         if is_dokan_activated:
             # 如果打两次,当前是第一次,设置为3分钟后运行
             #   # 本来以为server为False(finish=True,success=False,server=False)就不会变成明天，谁知道还是变成明天
             #   # 逻辑太复杂,不如直接target，简单点
             if self.config.dokan.attack_count_config.remain_attack_count == 1 and self.config.dokan.attack_count_config.daily_attack_count == 2:
-                self.set_next_run(task="Dokan", target=now + self.config.dokan.scheduler.failure_interval)
+                # target 是精确重试时间，不能再让 server_update 覆盖成明天固定时间。
+                self.set_next_run(task="Dokan", target=now + self.config.dokan.scheduler.failure_interval,
+                                  server=False)
                 return
             # 其余情况当作成功
             self.set_next_run(task="Dokan", finish=False, success=True, server=True)
