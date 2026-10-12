@@ -1,4 +1,5 @@
 import math
+import re
 import time
 
 import cv2
@@ -13,6 +14,37 @@ from tasks.base_task import BaseTask
 
 
 class LoginAccount(BaseTask, SwitchAccountAssets):
+    CHARACTER_LEVEL_PREFIX = re.compile(r'^\s*\d{1,3}\s*[\(\[<（【《]?\s*')
+
+    @classmethod
+    def _normalize_character_ocr_name(cls, ocr_text: str, character_name: str) -> str:
+        if ocr_text == character_name:
+            return ocr_text
+
+        candidate = cls.CHARACTER_LEVEL_PREFIX.sub('', ocr_text, count=1).strip()
+        if candidate == character_name:
+            return candidate
+
+        return ocr_text.strip()
+
+    def _is_character_select_open(self) -> bool:
+        return (
+            self.appear(self.I_SA_CHECK_SELECT_SVR_2)
+            or self.appear(self.I_SA_CHECK_SELECT_SVR_1)
+            or self.ocr_appear(self.O_SA_CHECK_SELECT_SVR)
+        )
+
+    def _click_character_until_selected(self, click: RuleClick, character_name: str, target_name: str) -> bool:
+        deadline = time.time() + 12
+        while time.time() < deadline:
+            self.click(click, interval=1)
+            self.screenshot()
+            if not self._is_character_select_open():
+                logger.info("character %s selected by %s", character_name, target_name)
+                return True
+            logger.info("character %s not selected yet, retry click %s", character_name, target_name)
+        logger.warning("character %s click %s timeout, select page still open", character_name, target_name)
+        return False
 
     def get_svr_name(self):
         self.screenshot()
@@ -106,7 +138,10 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
             self.screenshot()
             ocrRes = self.O_SA_SELECT_SVR_CHARACTER_LIST.detect_and_ocr(self.device.image)
             # 去除角色等级数字
-            characterNameList = [ocrResItem.ocr_text.lstrip('1234567890 ([<>])【】（）《》') for ocrResItem in ocrRes]
+            characterNameList = [
+                self._normalize_character_ocr_name(ocrResItem.ocr_text, characterName)
+                for ocrResItem in ocrRes
+            ]
             logger.info(characterNameList)
             ocrResBoxList = [ocrResItem.box for ocrResItem in ocrRes]
             for index, item in enumerate(characterNameList):
@@ -126,11 +161,18 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
 
                 # 此时 tmp 内存储的时角色名位置,而点击角色名没有反应
                 # 所以需要获取到对应的服务器图标位置
-                tmpClick.roi_front[1] -= 30
-                self.ui_click_until_disappear(tmpClick, stop=self.I_SA_CHECK_SELECT_SVR_2,
-                                              interval=3)
-                logger.info("character %s found,and clicked svr icon", characterName)
-                return True
+                tmpIconClick = RuleClick(
+                    roi_back=deepcopy(tmpClick.roi_back),
+                    roi_front=deepcopy(tmpClick.roi_front),
+                    name="tmpIconClick"
+                )
+                tmpIconClick.roi_front[1] -= 30
+                if self._click_character_until_selected(tmpClick, characterName, "character name"):
+                    return True
+                if self._click_character_until_selected(tmpIconClick, characterName, "server icon"):
+                    return True
+                logger.warning("character %s found, but click did not close select page", characterName)
+                continue
             if lastCharacterNameList == characterNameList:
                 break
             logger.info(f'{characterName} not found,start swipe')

@@ -1,19 +1,17 @@
-import importlib
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 
-from module.exception import TaskEnd, RequestHumanTakeover
+from module.exception import TaskEnd
 from module.logger import logger
 from tasks.Component.SwitchAccount.switch_account import SwitchAccount
 from tasks.DailyTrifles.script_task import ScriptTask as DailyTriflesTask
-from tasks.FindJade import WantedQuestsEx
 from tasks.FindJade.assets import FindJadeAssets
 from tasks.FindJade.config import AccountInfo, FindJade
 from tasks.GameUi.game_ui import GameUi
 
 
 class ScriptTask(GameUi, FindJadeAssets):
-    fade_conf: FindJade= None
+    fade_conf: FindJade = None
 
     def run(self):
         self.fade_conf = self.config.find_jade
@@ -23,34 +21,22 @@ class ScriptTask(GameUi, FindJadeAssets):
             if not self.is_need_login(accountInfo):
                 logger.warning("%s Skipped last Login Time:%s", accountInfo.character, accountInfo.last_complete_time)
                 continue
+
             with self._temporary_running_task(''):
                 suc = SwitchAccount(self.config, self.device, accountInfo).switchAccount()
             if not suc:
                 logger.warning("switch to %s-%s Failed", accountInfo.character, accountInfo.svr)
                 continue
+
             logger.info("%s-%s login suc, run DailyTrifles before FindJade",
                         accountInfo.character, accountInfo.svr)
             self._run_daily_trifles_after_login(accountInfo)
-            #
-            wq = self.CreatObjectFromModule("WantedQuests", config=self.config, device=self.device)
-            wq.fade_conf = self.fade_conf
+            logger.info("%s-%s skip WantedQuests stage", accountInfo.character, accountInfo.svr)
+            self.fade_conf.update_account_login_history(accountInfo)
+            self.save_config()
 
-            try:
-                wq.run()
-            except TaskEnd as e:
-                logger.warning("%s-%s TaskEnd", accountInfo.character, accountInfo.svr)
-                # 更新配置文件中的时间
-                self.fade_conf.update_account_login_history(accountInfo)
-                self.save_config()
-                continue
-            except RequestHumanTakeover as e:
-                raise
-            except Exception as e:
-                logger.error(e)
-                self.next_run("FindJade", success=False)
         self.next_run("FindJade", success=True)
         raise TaskEnd("FindJade")
-        pass
 
     def _run_daily_trifles_after_login(self, account_info: AccountInfo):
         if not self.config.daily_trifles.scheduler.enable:
@@ -73,11 +59,6 @@ class ScriptTask(GameUi, FindJadeAssets):
             object.__setattr__(self.config.model, 'running_task', previous)
 
     def is_need_login(self, item: AccountInfo):
-        """
-            根据上次登陆时间 判断是否需要登录查找
-        @param item:
-        @type item:
-        """
         lastTime = item.last_complete_time
         now = datetime.now()
         if now - lastTime > timedelta(hours=13):
@@ -87,25 +68,6 @@ class ScriptTask(GameUi, FindJadeAssets):
         if (5 <= lastTime.hour < 18) and now.hour >= 18:
             return True
         return False
-
-    def CreatObjectFromModule(self, task_name: str, **kwargs):
-        module_name = 'script_task'
-        from pathlib import Path
-        module_path = str(Path.cwd() / 'tasks' / task_name / (module_name + '.py'))
-
-        spec = importlib.util.spec_from_file_location(module_name, module_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
-        WQEX = type("WQEX", (module.ScriptTask,), {
-            "need_invite_vip": WantedQuestsEx.need_invite_vip,
-            "get_invite_vip_name": WantedQuestsEx.get_invite_vip_name,
-            "next_run": WantedQuestsEx.next_run,
-            "invite_success_callback": WantedQuestsEx.invite_success_callback,
-            "get_config": WantedQuestsEx.get_config
-        })
-        wq = WQEX(**kwargs)
-        return wq
 
     def save_config(self):
         self.config.save()
@@ -127,9 +89,6 @@ class ScriptTask(GameUi, FindJadeAssets):
 if __name__ == '__main__':
     from module.config.config import Config
     from module.device.device import Device
-    # from mypatch import SimplePatch
-
-    # SimplePatch.patch()
 
     c = Config('oas1')
     d = Device(c)
