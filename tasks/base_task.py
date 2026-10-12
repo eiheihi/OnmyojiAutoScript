@@ -715,31 +715,30 @@ class BaseTask(GlobalGameAssets, CostumeBase):
 
     def ui_get_reward(self, click_image: RuleImage or RuleOcr or RuleClick, click_interval: float = 1):
         """
-        传进来一个点击图片 或是 一个ocr， 会点击这个图片，然后等待‘获得奖励’，
-        最后当获得奖励消失后 退出
-        :param click_interval:
-        :param click_image:
-        :return:
+        Click an entry action, wait until the reward panel has really appeared,
+        then require several consecutive missing detections before treating it as closed.
         """
-        _timer = Timer(10)
-        _timer.start()
+        timer = Timer(15).start()
+        reward_seen = False
+        reward_missing_count = 0
         while 1:
             self.screenshot()
 
             if self.ui_reward_appear_click():
+                reward_seen = True
+                reward_missing_count = 0
                 sleep(0.5)
-                while 1:
-                    self.screenshot()
-                    # 等待动画结束
-                    if not self.appear(self.I_UI_REWARD, threshold=0.6):
-                        logger.info('Get reward success')
-                        break
+                continue
 
-                    # 一直点击
-                    if self.ui_reward_appear_click():
-                        continue
-                break
-            if _timer.reached():
+            if reward_seen:
+                reward_missing_count += 1
+                if reward_missing_count >= 2:
+                    logger.info('Get reward success')
+                    break
+                sleep(0.3)
+                continue
+
+            if timer.reached():
                 logger.warning('Get reward timeout')
                 break
 
