@@ -155,8 +155,8 @@
   {
     "itemName": "st_souls_3",
     "imageName": "sk3_st_souls_3.png",
-    "roiFront": "1176,227,70,80",
-    "roiBack": "1181,234,58,69",
+    "roiFront": "1191,242,44,54",
+    "roiBack": "1167,210,91,113",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "点击御魂"
