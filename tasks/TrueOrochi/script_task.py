@@ -8,14 +8,10 @@ from module.logger import logger
 from module.exception import TaskEnd, GameStuckError
 from module.base.timer import Timer
 
-from tasks.GameUi.game_ui import GameUi
-from tasks.Component.GeneralBattle.general_battle import GeneralBattle
-from tasks.Component.GeneralInvite.general_invite import GeneralInvite
-from tasks.Component.GeneralRoom.general_room import GeneralRoom
 from tasks.Orochi.script_task import ScriptTask as OrochiScriptTask
 from tasks.Orochi.config import Layer
 from tasks.Orochi.page import page_orochi
-from tasks.GameUi.page import page_main, page_shikigami_records
+from tasks.GameUi.page import page_shikigami_records
 from tasks.Exploration.page import page_gameplay
 from tasks.TrueOrochi.assets import TrueOrochiAssets
 
@@ -23,25 +19,14 @@ from tasks.TrueOrochi.assets import TrueOrochiAssets
 class ScriptTask(OrochiScriptTask, TrueOrochiAssets):
 
     def run(self):
-    
         conf = self.config.true_orochi.true_orochi_config
+        true_orochi_soul_switched = False
 
-        # 玩法tab的八岐大蛇模块在场说明本周还有次数，消失说明本周已打完
         self.goto_page(page_gameplay)
         if not self.appear(self.I_ST_MODULE):
             logger.warning('True orochi module absent, no attempts left this week')
             self.check_times(True)
             raise TaskEnd('TrueOrochi')
-
-        # 御魂切换方式一
-        if self.config.true_orochi.switch_soul.enable:
-            self.goto_page(page_shikigami_records)
-            self.run_switch_soul(self.config.true_orochi.switch_soul.switch_group_team)
-        # 御魂切换方式二
-        if self.config.true_orochi.switch_soul.enable_switch_by_name:
-            self.goto_page(page_shikigami_records)
-            self.run_switch_soul_by_name(self.config.true_orochi.switch_soul.group_name,
-                                         self.config.true_orochi.switch_soul.team_name)
 
         self.goto_page(page_orochi)
         sleep(0.5)
@@ -50,31 +35,33 @@ class ScriptTask(OrochiScriptTask, TrueOrochiAssets):
             logger.warning('Not find true orochi')
             logger.warning('Try to battle orochi for ten times')
 
-            # 判断是否需要挑战十层触发真蛇
             if not conf.find_true_orochi:
                 logger.info('Not find_true_orochi_help')
                 self.check_times(False)
                 raise TaskEnd('TrueOrochi')
 
+            self.switch_orochi_ten_soul()
+            self.goto_page(page_orochi)
             self.check_layer(Layer.TEN)
             self.check_lock(False)
             count_orochi_ten = 0
             while 1:
                 self.screenshot()
-                # 检查猫咪奖励
                 if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
                     continue
                 if not self.appear(self.I_OROCHI_FIRE):
                     continue
                 if self.check_true_orochi(False):
                     logger.info('Find true orochi')
+                    self.switch_true_orochi_soul()
+                    true_orochi_soul_switched = True
+                    self.goto_page(page_orochi)
                     battle = True
                     break
                 if count_orochi_ten >= 10:
                     logger.warning('Not find true orochi')
                     battle = False
                     break
-                # 否则点击挑战
                 if self.appear(self.I_OROCHI_FIRE):
                     self.ui_click_until_disappear(self.I_OROCHI_FIRE)
                     self.run_general_battle()
@@ -82,15 +69,15 @@ class ScriptTask(OrochiScriptTask, TrueOrochiAssets):
                     continue
 
         if not battle:
-            # 如果还没有真蛇，那么就退出
             self.check_times(battle)
             raise TaskEnd('TrueOrochi')
 
-        # 如果有真蛇，开始第一次战斗
+        if not true_orochi_soul_switched:
+            self.switch_true_orochi_soul()
+            self.goto_page(page_orochi)
         self.run_true_orochi_battle()
         self.check_times(True)
 
-        # 检查是否还有真蛇入口，支持存储两次
         self.goto_page(page_orochi)
         sleep(0.5)
         if self.check_true_orochi(True):
@@ -102,8 +89,7 @@ class ScriptTask(OrochiScriptTask, TrueOrochiAssets):
         raise TaskEnd('TrueOrochi')
 
     def run_true_orochi_battle(self):
-        """执行一次真蛇战斗"""
-        conf = self.config.true_orochi.true_orochi_config
+        """Run one true orochi battle."""
         logger.hr('True Orochi Battle')
         while 1:
             self.screenshot()
@@ -126,7 +112,7 @@ class ScriptTask(OrochiScriptTask, TrueOrochiAssets):
                 continue
             if self.appear_then_click(self.I_ST_CREATE_ROOM, interval=1):
                 continue
-        # 战斗准备
+
         logger.info('Battle prepare')
         self.ui_click(self.I_ST_FIRE_PREPARE, self.I_BUFF)
         while 1:
@@ -136,12 +122,9 @@ class ScriptTask(OrochiScriptTask, TrueOrochiAssets):
             if self.appear_then_click(self.I_ST_AUTO_FALSE, interval=1.8):
                 continue
 
-            # 下面代码 "点击准备" 会造成，点击了准备打第一层 循环 if not self.appear(self.I_BUFF): 时候跳出while循环，导致真蛇卡在第二层
-            # if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1.8):
-            #     continue
         self.device.stuck_record_add('BATTLE_STATUS_S')
         self.device.click_record_clear()
-        logger.info("Start battle process")
+        logger.info('Start battle process')
         check_timer = Timer(280)
         check_timer.start()
         check_count = 0
@@ -152,7 +135,6 @@ class ScriptTask(OrochiScriptTask, TrueOrochiAssets):
                 self.screenshot()
                 if not self.appear(self.I_GREED_GHOST):
                     continue
-                # 左上角的贪吃鬼
                 while 1:
                     self.screenshot()
                     if not self.appear(self.I_GREED_GHOST):
@@ -174,23 +156,31 @@ class ScriptTask(OrochiScriptTask, TrueOrochiAssets):
                 self.device.stuck_record_add('BATTLE_STATUS_S')
             sleep(0.5)
 
-        logger.info("Battle process end")
+        logger.info('Battle process end')
+
+    def switch_true_orochi_soul(self):
+        switch_soul = self.config.true_orochi.switch_soul
+        if switch_soul.enable:
+            self.goto_page(page_shikigami_records)
+            self.run_switch_soul(switch_soul.switch_group_team)
+        if switch_soul.enable_switch_by_name:
+            self.goto_page(page_shikigami_records)
+            self.run_switch_soul_by_name(switch_soul.group_name, switch_soul.team_name)
+
+    def switch_orochi_ten_soul(self):
+        switch_soul = self.config.orochi.switch_soul
+        if not switch_soul.auto_switch_soul:
+            return
+        logger.info('Switch soul for orochi layer ten')
+        self.goto_page(page_shikigami_records)
+        self.run_switch_soul(switch_soul.ten_switch)
 
     def check_true_orochi(self, screenshot=False) -> bool:
-        """
-        检查是否出现真蛇（要求当前的界面必须是在御魂挑战的界面）
-        :return:
-        """
         if screenshot:
             self.screenshot()
         return self.appear(self.I_FIND_TS)
 
     def check_times(self, battle: bool):
-        """
-        根据是否有战斗结果设置下次运行时间
-        :param battle:
-        :return:
-        """
         interval = self.config.true_orochi.scheduler.success_interval if battle \
             else self.config.true_orochi.scheduler.failure_interval
         self.set_next_run(task='TrueOrochi', target=datetime.now() + interval)
