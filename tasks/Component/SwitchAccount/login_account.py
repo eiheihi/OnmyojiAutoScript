@@ -133,7 +133,7 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
             self.screenshot()
 
         self.O_SA_SELECT_SVR_CHARACTER_LIST.keyword = characterName
-        lastCharacterNameList = []
+        up_swipe_count = 0
         while 1:
             self.screenshot()
             ocrRes = self.O_SA_SELECT_SVR_CHARACTER_LIST.detect_and_ocr(self.device.image)
@@ -173,10 +173,14 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
                     return True
                 logger.warning("character %s found, but click did not close select page", characterName)
                 continue
-            if lastCharacterNameList == characterNameList:
+            if up_swipe_count >= 2:
                 break
-            logger.info(f'{characterName} not found,start swipe')
-            lastCharacterNameList = characterNameList
+            up_swipe_count += 1
+            logger.info(
+                "%s not found, start upward swipe (%s/2)",
+                characterName,
+                up_swipe_count,
+            )
             self.swipe(self.S_SA_ACCOUNT_LIST_UP)
             # 等待滑动动画完成
             time.sleep(1.5)
