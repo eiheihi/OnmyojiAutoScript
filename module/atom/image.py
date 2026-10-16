@@ -364,6 +364,26 @@ class RuleImage(RuleImageMallResourceMixin):
             raise Exception(f"unknown method {self.method}")
         source = self.corp(image)
         mat = self.image
+        src_h, src_w = source.shape[:2]
+        mat_h, mat_w = mat.shape[:2]
+        if source.size == 0 or mat.size == 0:
+            self.last_score = -1.0
+            return []
+        # OpenCV matchTemplate 在模板与搜索区宽高「交叉错位」(一维大、一维小)时断言崩溃
+        if (mat_h < src_h and mat_w > src_w) or (mat_h > src_h and mat_w < src_w):
+            logger.warning(
+                f'{self.name}: 模板 {mat_w}x{mat_h} 与搜索区 {src_w}x{src_h} '
+                f'尺寸交叉错位，跳过该模板匹配'
+            )
+            self.last_score = -1.0
+            return []
+        # 模板整体大于搜索区：匹配结果为空，无崩溃风险，跳过
+        if src_h < mat_h or src_w < mat_w:
+            logger.debug(
+                f'{self.name}: 搜索区 {src_w}x{src_h} 小于模板 {mat_w}x{mat_h}，跳过该模板匹配'
+            )
+            self.last_score = -1.0
+            return []
         mask = self.mask if self.is_masked_template_match else None
         if self._template_is_degenerate(mat, mask):
             logger.error(f"{self.name} template is flat (no variance in matching area), treated as not matched")
@@ -401,6 +421,26 @@ class RuleImage(RuleImageMallResourceMixin):
             raise Exception(f"unknown method {self.method}")
         source = self.corp(image)
         mat = self.image
+        src_h, src_w = source.shape[:2]
+        mat_h, mat_w = mat.shape[:2]
+        if source.size == 0 or mat.size == 0:
+            self.last_score = -1.0
+            return []
+        # OpenCV matchTemplate 在模板与搜索区宽高「交叉错位」(一维大、一维小)时断言崩溃
+        if (mat_h < src_h and mat_w > src_w) or (mat_h > src_h and mat_w < src_w):
+            logger.warning(
+                f'{self.name}: 模板 {mat_w}x{mat_h} 与搜索区 {src_w}x{src_h} '
+                f'尺寸交叉错位，跳过该模板匹配'
+            )
+            self.last_score = -1.0
+            return []
+        # 模板整体大于搜索区：匹配结果为空，无崩溃风险，跳过
+        if src_h < mat_h or src_w < mat_w:
+            logger.debug(
+                f'{self.name}: 搜索区 {src_w}x{src_h} 小于模板 {mat_w}x{mat_h}，跳过该模板匹配'
+            )
+            self.last_score = -1.0
+            return []
         mask = self.mask if self.is_masked_template_match else None
         if self._template_is_degenerate(mat, mask):
             logger.error(f"{self.name} template is flat (no variance in matching area), treated as not matched")

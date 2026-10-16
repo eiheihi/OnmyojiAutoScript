@@ -81,6 +81,7 @@ from tasks.Secret.config import Secret
 from tasks.WeeklyTrifles.config import WeeklyTrifles
 from tasks.MysteryShop.config import MysteryShop
 from tasks.Duel.config import Duel
+from tasks.Chess.config import Chess
 # ----------------------------------------------------------------------------------------------------------------------
 
 class ConfigModel(ConfigBase):
@@ -144,6 +145,7 @@ class ConfigModel(ConfigBase):
     weekly_trifles: WeeklyTrifles = Field(default_factory=WeeklyTrifles)
     mystery_shop: MysteryShop = Field(default_factory=MysteryShop)
     duel: Duel = Field(default_factory=Duel)
+    chess: Chess = Field(default_factory=Chess)
 
     # 阴阳寮
     collective_missions: CollectiveMissions = Field(default_factory=CollectiveMissions)
@@ -485,4 +487,3 @@ if __name__ == "__main__":
         c = ConfigModel()
 
     print(c.script_task('GuildBanquet'))
-

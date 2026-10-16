@@ -118,6 +118,7 @@
 </context>
 <context>
     <name>FluTreeView</name>
+    <message><source>Chess</source><translation>百鬼棋局</translation></message>
     <message><source>Home</source><translation>主页</translation></message>
     <message><source>Update</source><translation>更新</translation></message>
     <message><source>Overview</source><translation>总览</translation></message>
@@ -207,6 +208,7 @@
 </context>
 <context>
     <name>TaskList</name>
+    <message><source>Chess</source><translation>百鬼棋局</translation></message>
 	    <message><source>Daily Task</source><translation>日常任务</translation></message>
     <message><source>AreaBoss</source><translation>地狱鬼王</translation></message>
     <message><source>GoldYoukai</source><translation>金币妖怪</translation></message>
@@ -739,5 +741,9 @@ Refresh：直接刷新，如果刷新操作进入CD，将标记为失败并退�
 	<message><source>Time Of Mystery</source><translation>强制设定出现神秘商店当天的执行时间</translation></message>
 	<message><source>time_of_mystery_help</source><translation>限定[00:00:01-23:30:00],这将使你无视掉调度器的Interval。保持默认'00:00:00'表示不使用</translation></message>
 	<message><source>TakoConfig</source><translation>石距加成</translation></message>
+</context>
+<context>
+    <name>Args</name>
+    <message><source>ChessConfig</source><translation>百鬼棋局配置</translation></message>
 </context>
 </TS>

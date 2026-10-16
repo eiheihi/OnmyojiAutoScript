@@ -51,11 +51,10 @@ if %errorlevel% neq 0 (
     exit /B
 )
 
-cd /d "%~dp0"
-set "_root=%~dp0"
-set "_root=%_root:~0,-1%"
-cd "%_root%"
-echo "%_root%
+REM This launcher lives in deploy\launcher, so the repository root is two levels up.
+for %%I in ("%~dp0\..\..") do set "_root=%%~fI"
+cd /d "%_root%"
+echo "%_root%"
 
 set "_pyBin=%_root%\toolkit"
 set "_GitBin=%_root%\toolkit\Git\mingw64\bin"
@@ -63,11 +62,11 @@ set "_adbBin=%_root%\toolkit\Lib\site-packages\adbutils\binaries"
 set "PATH=%_root%\toolkit\alias;%_root%\toolkit\command;%_pyBin%;%_pyBin%\Scripts;%_GitBin%;%_adbBin%;%PATH%"
 
 
-python -m deploy.installer
-if %errorlevel% neq 0 (
+"%_pyBin%\python.exe" -m deploy.installer
+if errorlevel 1 (
     pause > nul
 ) else (
-    start /B pythonw gui.py
+    start "" /B "%_pyBin%\pythonw.exe" "%_root%\gui.py"
 )
 
 REM 关闭自身窗口
