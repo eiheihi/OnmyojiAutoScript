@@ -9,7 +9,7 @@ from adbutils import AdbClient, AdbDevice
 
 from module.base.decorator import cached_property
 from module.config.config import Config
-from module.config.utils import deep_iter
+from module.config.utils import deep_iter, desktop_mode_enabled
 from module.exception import RequestHumanTakeover
 from module.logger import logger
 
@@ -126,6 +126,15 @@ class ConnectionAttr:
     @cached_property
     def is_emulator(self):
         return self.serial.startswith('emulator-') or self.serial.startswith('127.0.0.1:')
+
+    @cached_property
+    def is_desktop(self):
+        """桌面客户端模式：script.desktop.enable 显式开关。
+
+        刻意不兜底：读不到配置时抛 AttributeError 比静默 False 好——后者会把
+        桌面模式当成模拟器模式继续跑，报错指向完全无关的地方。
+        """
+        return desktop_mode_enabled(self.config)
 
     @cached_property
     def is_network_device(self):
