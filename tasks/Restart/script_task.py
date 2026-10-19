@@ -36,9 +36,15 @@ class ScriptTask(LoginHandler):
 
     def app_restart(self):
         logger.hr('App restart')
-        self.device.app_stop()
-        self.device.app_start()
-        self.app_handle_login()
+        if self.device.is_desktop:
+            # 客户端可能刚被自动拉起并停在登录页，此时直接复用；已登录时才真正重启
+            if self.device.app_is_running():
+                self.device.app_stop()
+            self._desktop_start_and_login()
+        else:
+            self.device.app_stop()
+            self.device.app_start()
+            self.app_handle_login()
 
         # self.config.task_delay(server_update=True)
         self.set_next_run(task='Restart', success=True, finish=True, server=True)
