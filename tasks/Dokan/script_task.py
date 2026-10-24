@@ -997,9 +997,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             #   # 本来以为server为False(finish=True,success=False,server=False)就不会变成明天，谁知道还是变成明天
             #   # 逻辑太复杂,不如直接target，简单点
             if self.config.dokan.attack_count_config.remain_attack_count == 1 and self.config.dokan.attack_count_config.daily_attack_count == 2:
-                # target 是精确重试时间，不能再让 server_update 覆盖成明天固定时间。
-                self.set_next_run(task="Dokan", target=now + self.config.dokan.scheduler.failure_interval,
-                                  server=False)
+                self.set_next_run(task="Dokan", target=now + self.config.dokan.scheduler.failure_interval, server=False)
                 return
             # 其余情况当作成功
             self.set_next_run(task="Dokan", finish=False, success=True, server=True)
