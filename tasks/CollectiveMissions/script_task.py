@@ -55,6 +55,7 @@ class ScriptTask(GameUi, CollectiveMissionsAssets):
         self.screenshot()
         current, remain, total = self.O_CM_NUMBER.ocr(self.device.image)
         if current == total == 30:
+            self._collect_rewards()
             logger.warning('Today\'s missions have been completed')
             self.set_next_run(task='CollectiveMissions', success=False, finish=True)
             raise TaskEnd('CollectiveMissions')
@@ -79,6 +80,8 @@ class ScriptTask(GameUi, CollectiveMissionsAssets):
             # 御魂就捐御魂
             self._soul(index)
 
+        self._collect_rewards()
+
         # 退出
         while 1:
             self.screenshot()
@@ -92,6 +95,35 @@ class ScriptTask(GameUi, CollectiveMissionsAssets):
         self.set_next_run(task='CollectiveMissions', success=True, finish=True)
         raise TaskEnd('CollectiveMissions')
 
+
+    def _collect_rewards(self, submit=None):
+        """提交后持续领取所有任务奖励，直到任务页连续稳定且没有可领奖励。"""
+        check_timer = Timer(3, count=3).start()
+        timeout = Timer(45).start()
+        logger.info('Start to collect all collective mission rewards')
+        while 1:
+            self.screenshot()
+            if timeout.reached():
+                logger.error('Collective mission rewards did not finish within 45 seconds')
+                raise RequestHumanTakeover
+            if self.ui_reward_appear_click():
+                check_timer.reset()
+                continue
+            # 检测与点击分开，避免点击冷却期间把仍存在的奖励当成已领完。
+            if self.appear(self.I_CM_REWARDS):
+                self.appear_then_click(self.I_CM_REWARDS, interval=1)
+                check_timer.reset()
+                continue
+            if submit is not None and self.appear(submit):
+                self.appear_then_click(submit, interval=1)
+                check_timer.reset()
+                continue
+            if not self.appear(self.I_CM_RECORDS):
+                check_timer.reset()
+                continue
+            if check_timer.reached():
+                logger.info('Finished collecting all collective mission rewards')
+                return
 
     def detect_one(self, ocr_1: RuleOcr, ocr_2: RuleOcr) -> MC:
         """
@@ -262,19 +294,7 @@ class ScriptTask(GameUi, CollectiveMissionsAssets):
                 raise RequestHumanTakeover
 
         logger.info('Swipe to the most matter')
-        # 还有一点很重要的，捐赠会有双倍的，需要领两次
-        reward_number = 0
-        while 1:
-            self.screenshot()
-
-            if reward_number >= 2:
-                break
-            if self.ui_reward_appear_click(False):
-                reward_number += 1
-                continue
-            if self.appear_then_click(self.I_CM_PRESENT, interval=1):
-                continue
-        self.ui_reward_appear_click(True)
+        self._collect_rewards(submit=self.I_CM_PRESENT)
         logger.info('Donate finished')
         return True
 
@@ -373,19 +393,7 @@ class ScriptTask(GameUi, CollectiveMissionsAssets):
             for click in click_list:
                 self.click(click)
         logger.info('Finish to feed soul')
-        # 还有一点很重要的，捐赠会有双倍的，需要领两次
-        reward_number = 0
-        while 1:
-            self.screenshot()
-
-            if reward_number >= 2:
-                break
-            if self.ui_reward_appear_click(False):
-                reward_number += 1
-                continue
-            if self.appear_then_click(self.I_FEED_SUBMIT, interval=1):
-                continue
-        self.ui_reward_appear_click(True)
+        self._collect_rewards(submit=self.I_FEED_SUBMIT)
         logger.info('Donate finished')
         return True
 
@@ -401,4 +409,3 @@ if __name__ == '__main__':
     t.screenshot()
 
     t.run()
-

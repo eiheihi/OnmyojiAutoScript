@@ -53,7 +53,7 @@ WELFARE_DOKAN_NAMES = {
     "背水一战1", "凉风有信", "病名為愛", "洛克丶王国", "蝶恋花", "LM78", "1M78",
     "IM78", "78", "三途猩猩子", "甜心主教", "恋如雨止", "哆啦B梦", "天空", "橘势",
     "轮回", "杨桃大王", "招财进宝", "三十", "荒河", "夜曲", "姑苏烟雨", "逍遥阁",
-    "半夏微凉", "结缘神社", "江南雨", "帐中妖", "渔渔子", "秋水一色", "殊漓",
+    "半夏微凉", "江南雨", "帐中妖", "渔渔子", "秋水一色", "殊漓", "酱酱紫",
     "七月七日晴", "邪马台", "小鑫肝", "夏弥的吻", "鬼兵良将", "如是我闻", "SDS",
     "临江", "桃花花", "哆啦A梦",
 }
@@ -699,9 +699,9 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 # if item_score > score or item_score < 1.5:
                 #     logger.info("click to making challenge disappear")
                 #     continue
-                # if p_num < self.config.dokan.dokan_config.min_people_num:
-                #     logger.info("people num too small")
-                #     continue
+                if p_num < self.config.dokan.dokan_config.min_people_num:
+                    logger.info("people num too small")
+                    continue
                 # if bounty < self.config.dokan.dokan_config.min_bounty:
                 #     logger.info("bounty too small")
                 #     continue

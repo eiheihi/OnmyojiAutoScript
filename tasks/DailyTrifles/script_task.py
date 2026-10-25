@@ -50,6 +50,19 @@ class ScriptTask(GameUi, Summon, DailyTriflesAssets):
             return
 
         self.get_current_page()
+        self.goto_page(page_main, accepted_pages=(page_courtyard_affairs,))
+        for attempt in range(1, 4):
+            self.screenshot()
+            if self.appear(self.I_CHECK_COURTYARD_AFFAIRS) or self.appear(self.I_ENTER_COURTYARD_AFFAIRS):
+                break
+            logger.warning(f'Courtyard affairs entrance not found ({attempt}/3)')
+            if attempt < 3:
+                sleep(1)
+        else:
+            logger.info('Skip DailyTrifles successfully: courtyard affairs entrance not found after 3 attempts')
+            self.set_next_run('DailyTrifles', success=True, finish=False)
+            raise TaskEnd('DailyTrifles')
+
         self.goto_page(page_courtyard_affairs)
 
         while 1:
