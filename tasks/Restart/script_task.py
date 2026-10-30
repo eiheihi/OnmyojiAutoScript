@@ -37,10 +37,13 @@ class ScriptTask(LoginHandler):
     def app_restart(self):
         logger.hr('App restart')
         if self.device.is_desktop:
-            # 客户端可能刚被自动拉起并停在登录页，此时直接复用；已登录时才真正重启
-            if self.device.app_is_running():
-                self.device.app_stop()
-            self._desktop_start_and_login()
+            if self.config.script.desktop.restart_when_window_exists:
+                self._desktop_restart_and_login()
+            else:
+                # 客户端可能刚被自动拉起并停在登录页，此时直接复用；已登录时才真正重启
+                if self.device.app_is_running():
+                    self.device.app_stop()
+                self._desktop_start_and_login()
         else:
             self.device.app_stop()
             self.device.app_start()
@@ -60,6 +63,47 @@ class ScriptTask(LoginHandler):
             # 如果时间在20:00-23:59之间则设定时间为次日 12 时
             else:
                 self.custom_next_run(task='Restart', custom_time=Time(12, 0), time_delta=1)
+
+    def _desktop_start_and_login(self) -> None:
+        """桌面模式：拉起客户端并登录，客户端窗口丢失时就地重拉，不把异常抛给调度器。
+
+        Restart 就是负责启动客户端的任务：GameNotRunningError 抛出去会被 script.py
+        接住再 task_call('Restart')，形成无限重启循环（每轮日志都「正常」，比直接崩
+        更难排查），所以必须在这里就地消化。登录流程自身的失败重试由 app_handle_login
+        内部完成（它会关掉客户端再重拉），这里只补「客户端窗口丢失」这一类重拉。
+        """
+        for attempt in range(1, DESKTOP_RESTART_ATTEMPTS + 1):
+            try:
+                self.device.app_start()
+                self.app_handle_login()
+                return
+            except (GameNotRunningError, GameStuckError, GameTooManyClickError) as e:
+                logger.warning(f'桌面客户端启动后仍未就绪（第 {attempt}/{DESKTOP_RESTART_ATTEMPTS} 轮）: {e}')
+                # 每轮失败都清掉本轮客户端，否则残留窗口会干扰下一轮的新窗口识别
+                logger.info('清理本轮残留客户端')
+                if not self.device.desktop_stop_client():
+                    # 关不掉就别重建：残留窗口会让下一轮绑错句柄，越试越乱
+                    logger.critical('桌面客户端无法关闭，残留进程会干扰重建，请手动结束该进程')
+                    raise RequestHumanTakeover
+        logger.critical(f'桌面客户端连续 {DESKTOP_RESTART_ATTEMPTS} 轮启动失败，请检查客户端与机器状态')
+        raise RequestHumanTakeover
+
+    def _desktop_restart_and_login(self) -> None:
+        """桌面模式：既有窗口就强杀重拉（真正的重启），不存在则只确保启动。
+
+        刚拉起的实例（网易 logo 先出、窗口标题后出，ensure_launched 在标题一出现就绑定）
+        不该再杀一次，否则会唤起两次客户端 —— 由 desktop_window_is_own_launch 区分。
+        """
+        if self.device.desktop_window_exists():
+            if self.device.desktop_window_is_own_launch():
+                logger.info('桌面客户端窗口存在，但这是本轮刚拉起的实例，跳过强制重启')
+            else:
+                logger.info('桌面客户端窗口存在，执行强制重启')
+                if not self.device.desktop_stop_client():
+                    logger.error('桌面客户端窗口存在但无法关闭，拒绝重建以免多开')
+                    raise RequestHumanTakeover(
+                        '桌面客户端窗口存在但无法关闭，请手动结束该进程后重试')
+        self._desktop_start_and_login()
 
     def delay_pending_tasks(self) -> bool:
         """
