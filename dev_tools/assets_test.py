@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from copy import copy
+from datetime import timedelta
 
 from numpy import float32, int32, uint8, fromfile
 from pathlib import Path
@@ -7,6 +9,7 @@ from pathlib import Path
 from module.logger import logger
 from module.atom.image import RuleImage
 from module.atom.ocr import RuleOcr
+from module.ocr.base_ocr import OcrMode
 
 
 def load_image(file: str, strict_size: bool = True):
@@ -99,61 +102,100 @@ def detect_image_detail(file: str, target: RuleImage) -> dict:
 
 
 def detect_ocr_detail(file: str, target: RuleOcr) -> dict:
+    # Use a private rule so runtime updates to area cannot alter the editor rule.
+    target = copy(target)
+    roi_front = _roi_to_text(target.roi)
+    roi_back = _roi_to_text(target.area)
     img = load_image(file, strict_size=False)
     if img is None:
         return {
-            "matched": False,
-            "similarity": 0.0,
+            "mode": target.mode.name,
+            "matched": None,
+            "confidence": None,
+            "recognized": False,
             "text": "",
-            "roiFront": _roi_to_text(target.roi),
-            "roiBack": _roi_to_text(target.area),
+            "results": [],
+            "roiFront": roi_front,
+            "roiBack": roi_back,
             "message": "image_load_failed",
         }
 
-    boxed = target.detect_and_ocr(img, logDisplay=False)
-    selected = None
+    # Capture diagnostics during the real mode-specific call, without running
+    # recognition a second time (which can produce a different OCR result).
+    lines = []
+    boxed = []
+    model = target.model
 
-    if boxed:
-        if target.keyword:
-            for item in boxed:
-                text = str(item.ocr_text or "")
-                if target.keyword in text or text == target.keyword:
-                    selected = item
-                    break
-        if selected is None:
-            selected = max(boxed, key=lambda x: float(x.score))
+    class ModelProbe:
+        def __getattr__(self, name):
+            return getattr(model, name)
 
-    if selected is None:
-        return {
-            "matched": False,
-            "similarity": 0.0,
-            "text": "",
-            "roiFront": _roi_to_text(target.roi),
-            "roiBack": _roi_to_text(target.area),
-            "message": "not_match",
-        }
+        def ocr_single_line(self, image):
+            text, score = model.ocr_single_line(image)
+            lines.append({"text": str(text), "confidence": round(float(score), 4)})
+            return text, score
 
-    box = selected.box
-    x0 = int(np.min(box[:, 0])) + int(target.roi[0])
-    y0 = int(np.min(box[:, 1])) + int(target.roi[1])
-    x1 = int(np.max(box[:, 0])) + int(target.roi[0])
-    y1 = int(np.max(box[:, 1])) + int(target.roi[1])
-    w = max(1, x1 - x0)
-    h = max(1, y1 - y0)
+    target.model = ModelProbe()
+    detect = target.detect_and_ocr
 
-    target.roi = [x0, y0, w, h]
-    target.area = [x0, y0, w, h]
+    def capture_detection(image, logDisplay=True):
+        results = detect(image, logDisplay=logDisplay)
+        boxed.extend(results)
+        return results
 
-    text = str(selected.ocr_text or "")
-    matched = target.match(text, included=True) if target.keyword else bool(text)
+    target.detect_and_ocr = capture_detection
+    value = target.ocr(img)
+    results = []
+    for item in boxed:
+        box = item.box
+        x0 = int(np.min(box[:, 0])) + int(target.roi[0])
+        y0 = int(np.min(box[:, 1])) + int(target.roi[1])
+        x1 = int(np.max(box[:, 0])) + int(target.roi[0])
+        y1 = int(np.max(box[:, 1])) + int(target.roi[1])
+        results.append({
+            "text": str(item.ocr_text),
+            "confidence": round(float(item.score), 4),
+            "roi": _roi_to_text((x0, y0, max(1, x1 - x0), max(1, y1 - y0))),
+        })
+
+    is_full = target.mode == OcrMode.FULL
+    text = "\n".join(item["text"] for item in results) if is_full else str(value)
+    # Numeric zero and zero-duration are legitimate values, as well as runtime
+    # fallbacks. Report the actual value and recognition evidence separately.
+    recognized = bool(results) or any(
+        line["text"] and (
+            line["confidence"] >= target.score
+            or (target.mode in (OcrMode.DIGIT, OcrMode.DIGITCOUNTER, OcrMode.QUANTITY)
+                and line["confidence"] >= target.min_score
+                and any(char.isdigit() for char in line["text"]))
+        ) for line in lines
+    )
+    matched = None
+    if target.keyword:
+        matched = recognized and (bool(any(value)) if is_full else target.match(text, included=True))
+    if isinstance(value, timedelta):
+        value = {"duration": str(value), "total_seconds": value.total_seconds()}
+    elif isinstance(value, (tuple, list)):
+        value = [item.item() if isinstance(item, np.generic) else item for item in value]
+    elif isinstance(value, np.generic):
+        value = value.item()
 
     return {
+        "mode": target.mode.name,
         "matched": matched,
-        "similarity": round(float(selected.score), 4),
+        "recognized": recognized,
+        "confidence": lines[0]["confidence"] if lines and not boxed else None,
         "text": text,
-        "roiFront": _roi_to_text(target.roi),
-        "roiBack": _roi_to_text(target.area),
-        "message": "match" if matched else "not_match",
+        "value": value,
+        "results": results,
+        "raw_lines": lines,
+        "keyword": target.keyword,
+        "roiFront": roi_front,
+        "roiBack": roi_back,
+        "match_roi": _roi_to_text(value) if is_full and matched else None,
+        "message": ("match" if matched else "not_match") if target.keyword else (
+            "recognized_without_keyword" if recognized else "no_text_detected"
+        ),
     }
 
 

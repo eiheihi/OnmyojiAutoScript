@@ -1233,13 +1233,7 @@ class AnnotatorManager:
             return {
                 "rule_type": "ocr",
                 "item_name": item_name,
-                "matched": bool(detail.get("matched", False)),
-                "similarity": float(detail.get("similarity", 0.0)),
-                "text": str(detail.get("text", "")),
-                "keyword": keyword,
-                "roiFront": self._parse_roi(str(detail.get("roiFront", rule.get("roiFront", "0,0,100,100")))),
-                "roiBack": self._parse_roi(str(detail.get("roiBack", rule.get("roiBack", "0,0,100,100")))),
-                "message": str(detail.get("message", "not_match")),
+                **detail,
             }
 
         if rule_type == "list":
@@ -1295,13 +1289,7 @@ class AnnotatorManager:
                 "rule_type": "list",
                 "list_type": "ocr",
                 "item_name": item_name,
-                "matched": bool(detail.get("matched", False)),
-                "similarity": float(detail.get("similarity", 0.0)),
-                "text": str(detail.get("text", "")),
-                "keyword": item_name,
-                "roiFront": self._parse_roi(str(detail.get("roiFront", self._parse_roi(str(list_meta.get("roiBack", "0,0,100,100")))))),
-                "roiBack": self._parse_roi(str(detail.get("roiBack", self._parse_roi(str(list_meta.get("roiBack", "0,0,100,100")))))),
-                "message": str(detail.get("message", "not_match")),
+                **detail,
             }
 
         raise AnnotatorError("invalid_rule_type", f"不支持测试的 rule_type: {rule_type}", 400)
@@ -1439,7 +1427,6 @@ class AnnotatorManager:
 
 
 annotator_manager = AnnotatorManager()
-
 
 
 

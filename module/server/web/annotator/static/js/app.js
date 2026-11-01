@@ -21,7 +21,6 @@
     },
 
     sourceDirs: [],
-    sourceLeafHasDirs: false,
     sourceLeafJsonFiles: [],
     currentDirPath: "",
     jsonFileName: "",
@@ -1931,7 +1930,7 @@
   }
 
   function updateRuleSourceActionVisibility() {
-    const canCreate = !state.sourceLeafHasDirs && !state.jsonFileName;
+    const canCreate = Boolean(state.currentDirPath) && !state.jsonFileName;
     const canDelete = Boolean(state.jsonFileName);
 
     el.newJsonName.classList.toggle("hidden", !canCreate);
@@ -1957,7 +1956,6 @@
     const preferredJson = String(targetJson || "").trim();
 
     state.sourceDirs = [];
-    state.sourceLeafHasDirs = false;
     state.sourceLeafJsonFiles = [];
     state.currentDirPath = "";
     state.jsonFileName = "";
@@ -2006,8 +2004,7 @@
       if (dirs.length === 0 || !selectedDir) {
         state.sourceDirs = preferredDirs.slice(0, depth);
         state.currentDirPath = joinPath(state.sourceDirs);
-        state.sourceLeafHasDirs = dirs.length > 0 && !selectedDir;
-        state.sourceLeafJsonFiles = state.sourceLeafHasDirs ? [] : (Array.isArray(data.json_files) ? data.json_files : []);
+        state.sourceLeafJsonFiles = Array.isArray(data.json_files) ? data.json_files : [];
         break;
       }
 
@@ -2017,7 +2014,7 @@
       depth += 1;
     }
 
-    if (!state.sourceLeafHasDirs) {
+    if (state.sourceDirs.length > 0) {
       if (state.sourceDirs.length > 0) {
         const sep = document.createElement("span");
         sep.className = "breadcrumb-sep";
@@ -2063,8 +2060,8 @@
     if (!fileName) {
       throw new Error("请输入新 JSON 名称");
     }
-    if (state.sourceLeafHasDirs) {
-      throw new Error("当前路径下还有子目录，请继续选择到最终目录");
+    if (!state.currentDirPath) {
+      throw new Error("请先选择规则目录");
     }
 
     const res = await api(`${API_PREFIX}/api/rules/source/create`, {
