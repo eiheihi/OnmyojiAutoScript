@@ -12,7 +12,7 @@ import numpy as np
 from module.atom.image import RuleImage
 from module.config.config_menu import ConfigMenu
 from module.config.config_model import ConfigModel
-from module.exception import TaskEnd
+from module.exception import GameStuckError, TaskEnd
 from tasks.Chess.assets import ChessAssets
 from tasks.Chess.config import Chess
 from tasks.Chess.runtime.press_and_drag import Press_and_Drag
@@ -164,6 +164,75 @@ class ChessIntegrationTests(unittest.TestCase):
         with self.assertRaises(TaskEnd):
             task.run()
         task.run_one_game.assert_not_called()
+
+    def record_protected_games(self, task, normal_rank=1):
+        games = []
+
+        def run_game():
+            exiting = task._rank_protection_exit_requested
+            games.append('exit' if exiting else 'normal')
+            task._rank_protection_exit_succeeded = exiting
+            return None if exiting else normal_rank
+
+        task.run_one_game.side_effect = run_game
+        return games
+
+    def test_rank_protection_precedes_every_normal_game_regardless_of_rank(self):
+        for rank in (1, 5, None):
+            with self.subTest(rank=rank):
+                task = self.run_task(run_count=2, rank_protection=True)
+                games = self.record_protected_games(task, normal_rank=rank)
+                with self.assertRaises(TaskEnd):
+                    task.run()
+                self.assertEqual(games, ['exit', 'exit', 'exit', 'normal'] * 2)
+                task.set_next_run.assert_called_once_with(
+                    task='Chess', success=True, finish=True)
+
+    def test_coin_full_after_normal_game_and_next_task_starts_with_protection(self):
+        for _ in range(2):
+            task = self.run_task(run_count=-1, rank_protection=True, coin_full_exit=True)
+            games = self.record_protected_games(task)
+            task._coin_is_full.side_effect = lambda: 'normal' in games
+            with self.assertRaises(TaskEnd):
+                task.run()
+            self.assertEqual(games, ['exit', 'exit', 'exit', 'normal'])
+
+    def test_rank_protection_does_not_start_games_when_already_full(self):
+        task = self.run_task(run_count=-1, rank_protection=True, coin_full_exit=True)
+        task._coin_is_full.return_value = True
+        with self.assertRaises(TaskEnd):
+            task.run()
+        task.run_one_game.assert_not_called()
+
+    def test_coin_full_during_protection_prevents_normal_game(self):
+        task = self.run_task(run_count=-1, rank_protection=True, coin_full_exit=True)
+        games = self.record_protected_games(task)
+        task._coin_is_full.side_effect = lambda: len(games) >= 2
+        with self.assertRaises(TaskEnd):
+            task.run()
+        self.assertEqual(games, ['exit', 'exit'])
+
+    def test_unconfirmed_protection_exit_cannot_count_as_normal_game(self):
+        task = self.run_task(run_count=1, rank_protection=True)
+        with self.assertRaises(GameStuckError):
+            task.run()
+        task.run_one_game.assert_called_once()
+        task.set_next_run.assert_not_called()
+
+    def test_time_limit_during_protection_prevents_normal_game(self):
+        task = self.run_task(run_count=1, rank_protection=True)
+        games = self.record_protected_games(task)
+        run_game = task.run_one_game.side_effect
+
+        def expire_after_exit():
+            result = run_game()
+            task.start_time -= timedelta(hours=1)
+            return result
+
+        task.run_one_game.side_effect = expire_after_exit
+        with self.assertRaises(TaskEnd):
+            task.run()
+        self.assertEqual(games, ['exit'])
 
     def test_time_limit_prevents_new_game(self):
         task = self.run_task(run_count=-1)

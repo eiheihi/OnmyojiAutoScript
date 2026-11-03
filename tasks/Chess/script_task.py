@@ -55,7 +55,7 @@ class ScriptTask(
         )
         strategy = self.select_lineup_strategy(selected_lineup)
 
-        # 启动恢复会主动退出遗留对局；正常循环只保留保段位退三局。
+        # 启动恢复会主动退出遗留对局；保段位在每场正式对局前另退三局。
         self._recover_interrupted_chess_game()
         self.goto_page(page_chess)
 
@@ -84,7 +84,7 @@ class ScriptTask(
         )
         self._consecutive_matchmaking_timeouts = 0
         completed = 0
-        rank_protection_exits_remaining = 0
+        rank_protection_exits_remaining = 3 if rank_protection else 0
         logger.info(
             'Chess task constraints: '
             f'lineup={strategy["key"]} ({strategy["display_name"]}), '
@@ -97,7 +97,6 @@ class ScriptTask(
         while (
             target_count == -1
             or completed < target_count
-            or rank_protection_exits_remaining > 0
         ):
             if datetime.now() - self.start_time >= self.limit_time:
                 logger.info(
@@ -120,7 +119,7 @@ class ScriptTask(
                 rank_protection and rank_protection_exits_remaining > 0
             )
             self._rank_protection_exit_succeeded = False
-            game_rank = self.run_one_game()
+            self.run_one_game()
 
             if (
                 self._rank_protection_exit_requested
@@ -134,22 +133,16 @@ class ScriptTask(
                 )
                 continue
 
-            completed += 1
-            if rank_protection and game_rank is not None and game_rank <= 4:
-                rank_protection_exits_remaining = 3
-                logger.info(
-                    'Chess rank protection activated: '
-                    f'last_rank=第{game_rank}名, schedule 3 active exits'
+            if self._rank_protection_exit_requested:
+                raise GameStuckError(
+                    'Chess: rank-protection exit was not confirmed; '
+                    'stop before starting a normal game'
                 )
-            else:
-                rank_protection_exits_remaining = 0
-                if rank_protection:
-                    logger.info(
-                        'Chess rank protection not activated: '
-                        f'last_rank='
-                        f'{"未知" if game_rank is None else f"第{game_rank}名"}, '
-                        'requires 第1至第4名'
-                    )
+
+            completed += 1
+            # 每场正式对局都必须先完成三次确认退出，不依赖上局名次，
+            # 也不依赖上次任务是否因满币、次数或时限提前结束。
+            rank_protection_exits_remaining = 3 if rank_protection else 0
             logger.info(
                 f'Chess completed games: {completed}/'
                 f'{"infinite" if target_count == -1 else target_count}, '
