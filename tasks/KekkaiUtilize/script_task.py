@@ -430,6 +430,7 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         """
         logger.hr('Start utilize')
         if self.first_utilize:
+            self.switch_friend_list(friend)
             self.swipe(self.S_U_END, interval=3)
             self.first_utilize = False
             if friend == SelectFriendList.SAME_SERVER:

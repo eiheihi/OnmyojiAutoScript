@@ -57,6 +57,8 @@ class SwitchAccountAssets:
 	S_SA_SVR_SWIPE_LEFT = RuleSwipe(roi_front=(730,460,30,21), roi_back=(470,410,26,21), mode="default", name="sa_svr_swipe_left")
 	# 登录界面 账号列表的手指向上滑动 
 	S_SA_ACCOUNT_LIST_UP = RuleSwipe(roi_front=(600,520,30,20), roi_back=(750,270,30,20), mode="default", name="sa_account_list_up")
+	# 登录界面 角色列表的手指向上短距离滑动
+	S_SA_CHARACTER_LIST_UP = RuleSwipe(roi_front=(600,520,30,20), roi_back=(690,370,30,20), mode="default", name="sa_character_list_up")
 
 
 	# Image Rule Assets

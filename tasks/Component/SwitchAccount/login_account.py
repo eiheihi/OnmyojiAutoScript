@@ -15,6 +15,7 @@ from tasks.base_task import BaseTask
 
 class LoginAccount(BaseTask, SwitchAccountAssets):
     CHARACTER_LEVEL_PREFIX = re.compile(r'^\s*\d{1,3}\s*[\(\[<（【《]?\s*')
+    CHARACTER_MAX_SWIPES = 5
 
     @classmethod
     def _normalize_character_ocr_name(cls, ocr_text: str, character_name: str) -> str:
@@ -173,15 +174,17 @@ class LoginAccount(BaseTask, SwitchAccountAssets):
                     return True
                 logger.warning("character %s found, but click did not close select page", characterName)
                 continue
-            if up_swipe_count >= 2:
+            if up_swipe_count >= self.CHARACTER_MAX_SWIPES:
+                logger.warning("character %s not found after %s swipes", characterName, up_swipe_count)
                 break
             up_swipe_count += 1
             logger.info(
-                "%s not found, start upward swipe (%s/2)",
+                "%s not found, start upward swipe (%s/%s)",
                 characterName,
                 up_swipe_count,
+                self.CHARACTER_MAX_SWIPES,
             )
-            self.swipe(self.S_SA_ACCOUNT_LIST_UP)
+            self.swipe(self.S_SA_CHARACTER_LIST_UP)
             # 等待滑动动画完成
             time.sleep(1.5)
 
