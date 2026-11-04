@@ -175,7 +175,7 @@ class CostumeShikigamiAssets:
 
 
 	# Image Rule Assets
-	# 用于判断在式神录
+	# 用于判断在式神录 
 	I_CHECK_RECORDS_13 = RuleImage(roi_front=(279,87,30,35), roi_back=(274,82,40,45), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeShikigami/sk13/sk13_check_records_13.png")
 	# 退出式神录 
 	I_RECORD_SOUL_BACK_13 = RuleImage(roi_front=(21,10,38,36), roi_back=(14,4,52,54), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeShikigami/sk13/sk13_record_soul_back_13.png")
