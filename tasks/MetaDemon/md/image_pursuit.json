@@ -1,0 +1,29 @@
+[
+  {
+    "itemName": "star6",
+    "imageName": "md_star6.png",
+    "roiFront": "534,431,14,18",
+    "roiBack": "534,431,14,18",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "description": "Non-six-star indicator (match means strong pursuit should be off)"
+  },
+  {
+    "itemName": "pursuit_off",
+    "imageName": "md_pursuit_off.png",
+    "roiFront": "1114,513,24,24",
+    "roiBack": "1114,513,24,24",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "description": "Strong pursuit unchecked"
+  },
+  {
+    "itemName": "pursuit_on",
+    "imageName": "md_pursuit_on.png",
+    "roiFront": "1114,513,24,24",
+    "roiBack": "1114,513,24,24",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "description": "Strong pursuit checked"
+  }
+]

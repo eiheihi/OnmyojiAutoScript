@@ -1,14 +1,14 @@
 # This Python file uses the following encoding: utf-8
 # @author runhey
 # github https://github.com/runhey
-from cached_property import cached_property
-from datetime import datetime
 from time import sleep
+from random import uniform
 
 
 from module.base.timer import Timer
+from module.atom.click import RuleClick
 from module.logger import logger
-from module.exception import TaskEnd
+from module.exception import TaskEnd, GameStuckError
 
 
 from tasks.Component.RightActivity.right_activity import RightActivity
@@ -16,71 +16,42 @@ from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.GameUi.game_ui import GameUi
-from tasks.GameUi.page import page_main, page_shikigami_records
-from tasks.MetaDemon.config import MetaDemon, DefaultStrategy, Strategy
+from tasks.MetaDemon.config import Strategy
 from tasks.MetaDemon.assets import MetaDemonAssets
-from tasks.Restart.assets import RestartAssets
-from tasks.ActivityShikigami.assets import ActivityShikigamiAssets
 
 
 
 class Star56(GameUi, MetaDemonAssets):
-
-    @cached_property
-    def cached_strategies(self) -> dict[str, list[int]]:
-        return Strategy.parse_all(self.config.meta_demon.md_strategies)
-
-    @cached_property
-    def cached_default_group_team(self) -> list[int]:
-        return Strategy.parse_group_team(self.config.meta_demon.md_default_strategy.md_preset_group_team_default_1) \
-            + Strategy.parse_group_team(self.config.meta_demon.md_default_strategy.md_preset_group_team_default_2)
 
     def is_star56(self):
         if not self.appear(self.I_STAR56_POS_1):
             return True
         return False
 
-    def hp_threshold_low(self, image):
-        """
-        @param image:
-        @return: 血量小于阈值返回True
-        """
-        return self.appear(self.I_STAR56_HP_THRESHOLD_F) and not self.appear(self.I_STAR56_HP_THRESHOLD_T)
-
-    @classmethod
-    def strategy2group_team(cls, strategies: dict[str, list[int]], detect_name: str) -> list[int] | None:
-        """
-        先是默认的完全匹配，然后是1个字符不同，最后是2个字符不同
-        @param strategies:
-        @param detect_name:
-        @return:
-        """
-        for i in range(2):
-            for key_name in strategies:
-                if len(key_name) != len(detect_name):
-                    continue
-                diff_count = sum(1 for c1, c2 in zip(key_name, detect_name) if c1 != c2)
-                if diff_count <= i < len(detect_name):
-                    return strategies[key_name]
-        return None
-
-    def get_group_team(self, detect_name: str) -> list[int]:
-        tmp = self.strategy2group_team(self.cached_strategies, detect_name)
-        return tmp if tmp else self.cached_default_group_team
 
 
 class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
+    # 活动页右下方的式神录入口，基于1280x720活动截图。
+    C_MD_RECORDS = RuleClick(roi_front=(1040,628,38,32), roi_back=(1040,628,38,32), name='md_records')
 
     def run(self):
-        if self.config.meta_demon.switch_soul.enable:
-            self.goto_page(page_shikigami_records)
-            self.run_switch_soul(self.config.meta_demon.switch_soul.switch_group_team)
+        self._active_strategy_soul = None
+        self._active_preset_team = None
+        self.enter_activity()
+        soul = self.config.meta_demon.switch_soul
+        if soul.enable or soul.enable_switch_by_name:
+            self.ui_click(self.C_MD_RECORDS, stop=self.I_CHECK_RECORDS, interval=1.5)
+            if soul.enable_switch_by_name:
+                self.run_switch_soul_by_name(soul.group_name, soul.team_name)
+            else:
+                self.run_switch_soul(soul.switch_group_team)
+            self.return_from_records()
+        if self.config.meta_demon.meta_demon_config.meta_crafting_card:
+            self.crafting()
 
-        if self.config.meta_demon.switch_soul.enable_switch_by_name:
-            self.goto_page(page_shikigami_records)
-            self.run_switch_soul_by_name(self.config.meta_demon.switch_soul.group_name,
-                                         self.config.meta_demon.switch_soul.team_name)
+        self.run_demons()
 
+    def enter_activity(self):
         self.enter(self.I_RIGHT_ENTER)
         while 1:
             self.screenshot()
@@ -95,12 +66,10 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
                 continue
             if self.appear_then_click(self.I_ENTER2, interval=1):
                 continue
-        if self.config.meta_demon.meta_demon_config.meta_crafting_card:
-            self.crafting()
 
+    def run_demons(self):
         boss_timer = Timer(50)
         boss_timer.start()
-        first_battle_for_easy_boss = True
         while 1:
             battle_processing = False
             is_hard_boss = False  # 五星或者六星
@@ -144,33 +113,23 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
             if boss_timer.reached():
                 logger.info('Time out, exit')
                 break
-            # 5/6星特殊处理 + 使用自定义策略组
-            target_group_team = [None, None]
-            if is_hard_boss:
-                logger.info('Hard boss')
-                if self.config.meta_demon.meta_demon_config.md_use_strategy:
-                    detect_full_name = self.O_MD_FULL_NAME.ocr_single(self.device.image)
-                    logger.info(f'detect_full_name: {detect_full_name}')
-                    if not detect_full_name:
-                        detect_full_name = ''
-                    group_team = self.get_group_team(detect_full_name)
-                    if self.hp_threshold_low(self.device.image):
-                        logger.info('Hp threshold low')
-                        target_group_team = group_team[2:4]
-                    else:
-                        logger.info('Hp threshold high')
-                        target_group_team = group_team[0:2]
-            else:
-                if self.config.meta_demon.meta_demon_config.md_use_strategy and first_battle_for_easy_boss:
-                    logger.info('Normal boss first battle use default group team')
-                    target_group_team = self.cached_default_group_team
             if battle_processing and self.appear(self.I_BATTLE_DEMON):
+                target_group_team = [None, None]
+                if self.config.meta_demon.meta_demon_config.md_use_strategy:
+                    detect_name = ''
+                    if is_hard_boss:
+                        detect_name = self.O_MD_FULL_NAME.ocr_single(self.device.image) or ''
+                        logger.info(f'detect_full_name: {detect_name}')
+                    target_group_team = self.config.meta_demon.md_default_strategy.get_group_team(
+                        detect_name, is_hard_boss)
+                    strategy_key = self.config.meta_demon.md_default_strategy.get_strategy_key(
+                        detect_name, is_hard_boss)
+                    if self.switch_strategy_soul(strategy_key):
+                        # 离开期间目标可能消失，返回后重新选择和识别，不能直接攻击旧目标。
+                        boss_timer.reset()
+                        continue
                 logger.info(f'preset group team: {target_group_team}')
                 self.battle_boss(target_group_team[0], target_group_team[1])
-                if first_battle_for_easy_boss:
-                    first_battle_for_easy_boss = False
-                if is_hard_boss:
-                    first_battle_for_easy_boss = True
                 boss_timer.reset()
                 continue
 
@@ -184,6 +143,80 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
         logger.info('Exit MetaDemon')
         self.set_next_run(task="MetaDemon", success=True)
         raise TaskEnd
+
+    def switch_strategy_soul(self, strategy_key: str) -> bool:
+        soul = getattr(self.config.meta_demon, f'md_soul_{strategy_key}')
+        if soul.enable_switch_by_name:
+            group_name, team_name = soul.group_name.strip(), soul.team_name.strip()
+            if not group_name or not team_name:
+                raise ValueError(f'{strategy_key}: soul group/team name must not be empty')
+            target = ('name', group_name, team_name)
+        elif soul.enable:
+            group, team = Strategy.parse_group_team(soul.switch_group_team)
+            if team > 4:
+                raise ValueError('Switch soul team must be in [1-4]')
+            target = ('number', group, team)
+        else:
+            return False
+        if getattr(self, '_active_strategy_soul', None) == target:
+            return False
+
+        logger.info(f'Switch MetaDemon soul for {strategy_key}: {target}')
+        self.ui_click(self.C_MD_RECORDS, stop=self.I_CHECK_RECORDS, interval=1.5)
+        if target[0] == 'name':
+            self.run_switch_soul_by_name(target[1], target[2])
+        else:
+            self.run_switch_soul((target[1], target[2]))
+        self.return_from_records()
+        self._active_strategy_soul = target
+        return True
+
+    def return_from_records(self):
+        # 御魂预设、式神录逐层返回，直到重新看到活动的召唤或挑战按钮。
+        timer = Timer(30).start()
+        while not timer.reached():
+            self.screenshot()
+            if self.appear(self.I_FIND_DEMON) or self.appear(self.I_BATTLE_DEMON):
+                return
+            self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1.5)
+        raise GameStuckError('MetaDemon: failed to return from shikigami records')
+
+    def battle_before(self, buff, config: GeneralBattleConfig, timeout: float = 30) -> bool:
+        timer = Timer(timeout).start()
+        configured = False
+        pending_preset = None
+        while not timer.reached():
+            self.screenshot()
+            if self.is_in_real_battle(False):
+                if pending_preset is not None:
+                    self._active_preset_team = pending_preset
+                return True
+            if self.appear_then_click(self.I_DISABLE_7DAYS_DIFF_SOUL, interval=0.8):
+                continue
+            if self.appear_then_click(self.I_CONFIRM_CLOSE_DIFF_SOUL, interval=0.8):
+                continue
+            if self.is_in_prepare(False):
+                if not config.lock_team_enable:
+                    if self.current_count == 1 and not configured:
+                        target_preset = (config.preset_group, config.preset_team)
+                        switch_preset = config.preset_enable and target_preset != getattr(
+                            self, '_active_preset_team', None)
+                        if switch_preset:
+                            # 切换失败或准备超时后，不复用此前的队伍缓存。
+                            self._active_preset_team = None
+                            self.switch_preset_team(True, *target_preset)
+                            pending_preset = target_preset
+                        self.check_and_open_buff(buff)
+                        configured = True
+                        # 预设关闭后仍有上阵动画；等待后重新截图，不能复用切换前的准备状态。
+                        if switch_preset:
+                            sleep(1)
+                        timer.reset()
+                        continue
+                    self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1.2)
+            sleep(0.2)
+        # 通用战斗会忽略False返回值，直接抛出异常避免卡入战斗等待。
+        raise GameStuckError('MetaDemon: prepare timed out before entering battle')
 
     def current_exhaustion(self) -> int:
         self.screenshot()
@@ -229,6 +262,9 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
         @return:
         """
         logger.info('Find demon')
+        delay = uniform(1, 20)
+        logger.info(f'Wait {delay:.1f}s before summoning next demon')
+        sleep(delay)
         while 1:
             self.screenshot()
             if self.appear(self.I_BATTLE_DEMON) and not self.appear(self.I_BOSS_EMPTY):
@@ -250,6 +286,7 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
 
     def battle_boss(self, group: int = None, team: int = None) -> bool:
         logger.info('Battle boss')
+        self.set_strong_pursuit()
         self.ui_click_until_disappear(self.I_BATTLE_DEMON, interval=1.8)
         battle_config = GeneralBattleConfig()
         battle_config.lock_team_enable = False
@@ -257,7 +294,7 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
             battle_config.preset_enable = False
             success = self.run_general_battle(battle_config)
             return True if success else False
-        # 针对5/6星的挑战
+        # 使用选定的预设阵容
         else:
             battle_config.preset_enable = True
             battle_config.preset_group = group
@@ -267,6 +304,27 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
             success = self.run_general_battle(battle_config)
             self.current_count = tmp_battle_count + 1
             return True if success else False
+
+    def set_strong_pursuit(self):
+        """挑战前校正强力追击：只对当前详情中的六星鬼王开启。"""
+        timer = Timer(8).start()
+        while not timer.reached():
+            self.screenshot()
+            if not self.appear(self.I_BATTLE_DEMON):
+                sleep(0.3)
+                continue
+            # I_STAR6 命中表示非六星，未命中时才开启六星强追。
+            enable = not self.appear(self.I_STAR6)
+            is_on = self.appear(self.I_PURSUIT_ON)
+            is_off = self.appear(self.I_PURSUIT_OFF)
+            if is_on != is_off:
+                if is_on == enable:
+                    return
+                logger.info(f'Set strong pursuit: {enable}')
+                # 只点击已识别的相反状态，随后重新截图确认，避免盲点反复开关。
+                self.click(self.I_PURSUIT_OFF if enable else self.I_PURSUIT_ON, interval=1.2)
+            sleep(0.3)
+        raise GameStuckError('MetaDemon: failed to confirm strong pursuit state')
 
     def battle_wait(self, random_click_swipt_enable: bool) -> bool:
         # 重写
