@@ -172,6 +172,8 @@ class GameUiAssets:
 	I_CHECK_MALL = RuleImage(roi_front=(231,455,131,78), roi_back=(201,432,185,121), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_check_mall.png")
 	# 商店页面标志（紫色招牌） 
 	I_CHECK_MALL_PURPLE = RuleImage(roi_front=(231,455,131,78), roi_back=(201,432,185,121), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_check_mall_purple.png")
+	# 商店页面标志（礼包屋招牌，避开角色对白）
+	I_CHECK_MALL_GIFT_SIGN = RuleImage(roi_front=(752,350,39,108), roi_back=(736,332,75,142), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_check_mall_gift_sign.png")
 	# 商店推荐页面标志 
 	I_CHECK_MALL_RECOMMEND = RuleImage(roi_front=(930,12,42,37), roi_back=(905,0,100,100), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_check_mall_recommend.png")
 	# 阴阳寮页面标志 
@@ -249,5 +251,4 @@ class GameUiAssets:
 	# 活动列表页爬塔活动文字 
 	L_ACT_LIST_OCR = RuleList(folder="./tasks/GameUi/page", direction="vertical", mode="ocr", roi_back=(50,123,49,553), size=(45, 69), 
 					 array=["版本"])
-
 

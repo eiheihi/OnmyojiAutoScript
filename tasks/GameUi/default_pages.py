@@ -111,8 +111,9 @@ page_courtyard_affairs.connect(
 )
 page_courtyard_affairs.add_leave_failure_hooks(GlobalGameAssets.I_UI_CANCEL_SAMLL, GlobalGameAssets.I_UI_BACK_RED)
 
-page_mall = Page(GameUiAssets.I_CHECK_MALL, category="global")
-page_mall = Page(any_of(GameUiAssets.I_CHECK_MALL, GameUiAssets.I_CHECK_MALL_PURPLE), category="global")
+# 角色对白会遮挡左下屋顶招牌，使用礼包屋固定招牌补充识别。
+page_mall = Page(any_of(GameUiAssets.I_CHECK_MALL, GameUiAssets.I_CHECK_MALL_PURPLE,
+                        GameUiAssets.I_CHECK_MALL_GIFT_SIGN), category="global")
 page_mall.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
                                                      action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_mall.add_enter_success_hooks(GameUiAssets.I_AD_CLOSE_RED, GlobalGameAssets.I_UI_BACK_RED, GlobalGameAssets.I_UI_CANCEL_SAMLL)

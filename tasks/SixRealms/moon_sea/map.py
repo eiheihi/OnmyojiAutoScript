@@ -50,19 +50,23 @@ class MoonSeaMap(MoonSeaSkills):
         kind, rounds, roi = self._read_map_ocr()
         candidates = {}
         for island in self.island_markers:
-            if island == MoonSeaType.island101 and self.appear(self.I_M_STORE):
-                continue
             boxes = self._marker_boxes(island)
             if boxes:
                 candidates[island] = boxes
-        if prefer_store and kind != MoonSeaType.island101 and MoonSeaType.island101 in candidates:
+        if (prefer_store and kind != MoonSeaType.island101
+                and MoonSeaType.island101 in candidates and not self.appear(self.I_M_STORE)):
             kind = MoonSeaType.island101
             roi = max(candidates[kind])
         elif kind != MoonSeaType.island100:
             roi = self._nearby_marker(candidates.get(kind, []), roi) or roi
         elif candidates:
+            # 不够钱时优先走其他岛，但只有宁息时仍需进入，不能退回空位盲点。
+            preferred = candidates
+            if self.appear(self.I_M_STORE):
+                preferred = {island: boxes for island, boxes in candidates.items()
+                             if island != MoonSeaType.island101} or candidates
             # OCR 未识别出岛型时，沿用从右向左的选岛顺序。
-            kind, roi = max(((island, max(boxes)) for island, boxes in candidates.items()),
+            kind, roi = max(((island, max(boxes)) for island, boxes in preferred.items()),
                             key=lambda candidate: candidate[1][0])
         logger.info('Island type: {}, Residue: {}, ROI: {}'.format(kind, rounds, roi))
         return kind, rounds, roi
@@ -202,4 +206,3 @@ if __name__ == '__main__':
     if match:
         isl_num = int(match.group())
         print(isl_num)
-

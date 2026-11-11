@@ -180,6 +180,15 @@
     "description": "商店页面标志（紫色招牌）"
   },
   {
+    "itemName": "check_mall_gift_sign",
+    "imageName": "page_check_mall_gift_sign.png",
+    "roiFront": "752,350,39,108",
+    "roiBack": "736,332,75,142",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "商店页面标志（礼包屋招牌，避开角色对白）"
+  },
+  {
     "itemName": "check_mall_recommend",
     "imageName": "page_check_mall_recommend.png",
     "roiFront": "930,12,42,37",

@@ -93,6 +93,24 @@ class IslandEntryTests(unittest.TestCase):
                 task.enter_island(MoonSeaType.island104, (1040, 310, 20, 90))
         self.assertEqual(task.events, [])
 
+    def test_only_store_remains_selectable_when_summon_button_is_visible(self):
+        task = OfflineMoonSea()
+        store = (649, 395, 20, 90)
+        with patch.object(task, "appear", side_effect=lambda rule: rule is task.I_M_STORE), \
+                patch.object(task, "_read_map_ocr", return_value=(MoonSeaType.island100, 12, (0, 0, 0, 0))), \
+                patch.object(task, "_marker_boxes", side_effect=lambda kind: [store] if kind == MoonSeaType.island101 else []):
+            self.assertEqual(task.decide(), (MoonSeaType.island101, 12, store))
+
+    def test_other_island_is_preferred_over_store_without_money(self):
+        task = OfflineMoonSea()
+        store = (1040, 395, 20, 90)
+        battle = (288, 300, 20, 90)
+        boxes = {MoonSeaType.island101: [store], MoonSeaType.island104: [battle]}
+        with patch.object(task, "appear", side_effect=lambda rule: rule is task.I_M_STORE), \
+                patch.object(task, "_read_map_ocr", return_value=(MoonSeaType.island100, 12, (0, 0, 0, 0))), \
+                patch.object(task, "_marker_boxes", side_effect=lambda kind: boxes.get(kind, [])):
+            self.assertEqual(task.decide(), (MoonSeaType.island104, 12, battle))
+
     def test_entry_cycles_in_order_with_one_shared_interval(self):
         task = OfflineMoonSea(enter_after=8)
         self.enter_unknown(task)
