@@ -16,7 +16,7 @@ from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.GameUi.game_ui import GameUi
-from tasks.MetaDemon.config import Strategy
+from tasks.MetaDemon.config import DefaultStrategy, Strategy
 from tasks.MetaDemon.assets import MetaDemonAssets
 
 
@@ -265,24 +265,41 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
         delay = uniform(1, 20)
         logger.info(f'Wait {delay:.1f}s before summoning next demon')
         sleep(delay)
-        while 1:
+        timer = Timer(30).start()
+        while not timer.reached():
             self.screenshot()
             if self.appear(self.I_BATTLE_DEMON) and not self.appear(self.I_BOSS_EMPTY):
                 break
             if self.appear_then_click(self.I_FIND_DEMON, interval=3.5):
                 continue
-        self.screenshot()
+            sleep(0.3)
+        else:
+            raise GameStuckError('MetaDemon: summon timed out before boss details appeared')
+        detect_full_name = self.recognize_boss_name()
+        logger.info(f'召唤鬼王识别完成: {detect_full_name}')
+        # 召唤完成后立即校正，挑战前仍会再次检查，避免期间目标或状态发生变化。
+        self.set_strong_pursuit(detect_full_name)
         if self.is_star56():
             logger.info('Star 5 or 6 demon found')
-            while 1:
-                sleep(0.4)
-                self.screenshot()
-                detect_full_name = self.O_MD_FULL_NAME.ocr_single(self.device.image)
-                if detect_full_name:
-                    break
             logger.info(f'召唤到高星鬼王: {detect_full_name}')
             self.config.notifier.push(content=f'召唤到高星鬼王: {detect_full_name}', title='超鬼王')
         return True
+
+    def recognize_boss_name(self) -> str:
+        """每次召唤均识别名字，连续两次一致才继续，失败则阻止后续操作。"""
+        timer = Timer(15).start()
+        previous = ''
+        sleep(1)  # 等待召唤展示动画，不能直接读取召唤按钮消失时的过渡帧。
+        while not timer.reached():
+            self.screenshot()
+            name = ''
+            if self.appear(self.I_BATTLE_DEMON) and not self.appear(self.I_BOSS_EMPTY):
+                name = ''.join((self.O_MD_FULL_NAME.ocr_single(self.device.image) or '').split())
+            if name and name == previous:
+                return name
+            previous = name
+            sleep(0.4)
+        raise GameStuckError('MetaDemon: failed to confirm summoned boss name')
 
     def battle_boss(self, group: int = None, team: int = None) -> bool:
         logger.info('Battle boss')
@@ -305,24 +322,45 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
             self.current_count = tmp_battle_count + 1
             return True if success else False
 
-    def set_strong_pursuit(self):
-        """挑战前校正强力追击：只对当前详情中的六星鬼王开启。"""
-        timer = Timer(8).start()
+    def set_strong_pursuit(self, detect_name: str = None):
+        """六星及特殊名单内的五星鬼王开启强追，确认开关后才继续。"""
+        # 挑战前重新识别当前目标，不依赖阵容切换开关，也不复用上一次鬼王的名字。
+        if detect_name is None:
+            detect_name = self.recognize_boss_name()
+        special_boss = DefaultStrategy.get_strategy_key(detect_name, True) != 'default'
+        timer = Timer(15).start()
+        previous = None
+        stable_count = 0
+        sleep(1)  # 详情页及强追按钮可能先于召唤动画结束出现。
         while not timer.reached():
             self.screenshot()
             if not self.appear(self.I_BATTLE_DEMON):
+                previous = None
+                stable_count = 0
                 sleep(0.3)
                 continue
-            # I_STAR6 命中表示非六星，未命中时才开启六星强追。
-            enable = not self.appear(self.I_STAR6)
+            six_star = self.appear(self.I_STAR6_POS_1)
+            enable = six_star or special_boss
             is_on = self.appear(self.I_PURSUIT_ON)
             is_off = self.appear(self.I_PURSUIT_OFF)
-            if is_on != is_off:
+            state = (enable, is_on, is_off)
+            stable_count = stable_count + 1 if state == previous else 1
+            if state != previous:
+                logger.info(f'Strong pursuit detection: boss={detect_name}, special={special_boss}, '
+                            f'six_star={six_star}, target={enable}, on={is_on}, off={is_off}, '
+                            f'star_template_score={self.I_STAR6_POS_1.last_score:.3f}')
+            previous = state
+            # 星级与开关均连续三帧一致才操作；点击后重新累计三帧确认，不能点击即放行。
+            if stable_count >= 3 and is_on != is_off:
                 if is_on == enable:
+                    logger.info(f'Strong pursuit confirmed: {enable}')
                     return
                 logger.info(f'Set strong pursuit: {enable}')
                 # 只点击已识别的相反状态，随后重新截图确认，避免盲点反复开关。
                 self.click(self.I_PURSUIT_OFF if enable else self.I_PURSUIT_ON, interval=1.2)
+                previous = None
+                stable_count = 0
+                sleep(0.8)
             sleep(0.3)
         raise GameStuckError('MetaDemon: failed to confirm strong pursuit state')
 
@@ -358,4 +396,3 @@ if __name__ == '__main__':
     t = ScriptTask(c, d)
 
     t.run()
-

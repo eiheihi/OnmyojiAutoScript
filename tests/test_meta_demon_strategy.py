@@ -141,13 +141,14 @@ class MetaDemonPursuitTests(unittest.TestCase):
         self.task.screenshot = Mock()
         self.task.appear = self.appear
         self.task.click = self.click
+        self.task.recognize_boss_name = Mock(return_value='大天狗')
+        self.task.is_star56 = Mock(return_value=True)
 
     def appear(self, rule):
         if rule is self.task.I_BATTLE_DEMON:
             return True
-        if rule is self.task.I_STAR6:
-            # 此模板出现表示非六星。
-            return not self.six_star
+        if rule is self.task.I_STAR6_POS_1:
+            return self.six_star
         if rule is self.task.I_PURSUIT_ON:
             return self.enabled and not self.unknown
         if rule is self.task.I_PURSUIT_OFF:
@@ -183,6 +184,38 @@ class MetaDemonPursuitTests(unittest.TestCase):
             self.sync()
         self.assertEqual(self.clicks, [])
 
+    def test_all_special_names_enable_five_star_pursuit(self):
+        self.six_star = False
+        for name in ('月读', '雪御前', '酒吞童子', '鬼王酒吞童子', '修罗鬼童丸', '鬼童丸'):
+            with self.subTest(name=name):
+                self.enabled = False
+                self.task.recognize_boss_name.return_value = name
+                self.sync()
+                self.assertTrue(self.enabled)
+
+    def test_low_star_special_name_does_not_enable_pursuit(self):
+        self.six_star = False
+        self.task.is_star56.return_value = False
+        self.task.recognize_boss_name.return_value = '月读'
+        self.sync()
+        self.assertFalse(self.enabled)
+        self.assertEqual(self.clicks, [])
+
+    def test_special_then_ordinary_five_star_disables_pursuit(self):
+        self.six_star = False
+        self.task.recognize_boss_name.side_effect = [' 月\n读 ', '大天狗']
+        self.sync()
+        self.assertTrue(self.enabled)
+        self.sync()
+        self.assertFalse(self.enabled)
+
+    def test_unrecognized_boss_prevents_challenge(self):
+        self.task.recognize_boss_name.side_effect = GameStuckError('name not confirmed')
+        self.task.ui_click_until_disappear = Mock()
+        with self.assertRaises(GameStuckError):
+            self.task.battle_boss()
+        self.task.ui_click_until_disappear.assert_not_called()
+
     def test_ignored_click_retries_until_confirmed(self):
         self.ignored_clicks = 1
         self.sync()
@@ -202,6 +235,88 @@ class MetaDemonPursuitTests(unittest.TestCase):
         with self.assertRaises(GameStuckError):
             self.task.battle_boss()
         self.task.ui_click_until_disappear.assert_not_called()
+
+    def test_transient_correct_state_is_not_accepted(self):
+        frames = 0
+
+        def screenshot():
+            nonlocal frames
+            frames += 1
+            # 点击后的首帧短暂显示成功，随后恢复关闭；必须继续重试。
+            self.enabled = frames == 4 or frames >= 10
+
+        self.task.screenshot.side_effect = screenshot
+        self.sync()
+        self.assertGreaterEqual(frames, 12)
+        self.assertGreaterEqual(len(self.clicks), 2)
+
+    def test_unstable_star_detection_never_releases_challenge(self):
+        def screenshot():
+            self.six_star = not self.six_star
+
+        self.task.screenshot.side_effect = screenshot
+        with self.assertRaises(GameStuckError):
+            self.sync()
+        self.assertEqual(self.clicks, [])
+
+
+class MetaDemonSummonTests(unittest.TestCase):
+    def setUp(self):
+        self.now = 100.0
+        self.task = ScriptTask.__new__(ScriptTask)
+        self.task.device = SimpleNamespace(image=None)
+        self.task.screenshot = Mock()
+        self.task.appear = lambda rule: rule is self.task.I_BATTLE_DEMON
+        self.task.O_MD_FULL_NAME = SimpleNamespace(ocr_single=Mock())
+        self.task.is_star56 = Mock(return_value=False)
+        self.task.set_strong_pursuit = Mock()
+        self.task.config = SimpleNamespace(notifier=SimpleNamespace(push=Mock()))
+
+    def advance(self, duration):
+        self.now += duration
+
+    def summon(self):
+        with patch('module.base.timer.time.time', side_effect=lambda: self.now), \
+                patch('tasks.MetaDemon.script_task.sleep', side_effect=self.advance):
+            return self.task.find_demon()
+
+    def test_low_star_also_recognizes_name_then_confirms_pursuit(self):
+        self.task.O_MD_FULL_NAME.ocr_single.side_effect = ['', '吸血姬', '', '吸血姬', '吸血姬']
+        self.assertTrue(self.summon())
+        self.assertEqual(self.task.O_MD_FULL_NAME.ocr_single.call_count, 5)
+        self.task.set_strong_pursuit.assert_called_once()
+        self.task.config.notifier.push.assert_not_called()
+
+    def test_unrecognized_name_stops_before_pursuit_or_notification(self):
+        self.task.O_MD_FULL_NAME.ocr_single.return_value = ''
+        with self.assertRaises(GameStuckError):
+            self.summon()
+        self.task.set_strong_pursuit.assert_not_called()
+        self.task.config.notifier.push.assert_not_called()
+
+    def test_failed_pursuit_stops_summon_before_next_step(self):
+        self.task.O_MD_FULL_NAME.ocr_single.return_value = '蚀月吸血姬'
+        self.task.is_star56.return_value = True
+        self.task.set_strong_pursuit.side_effect = GameStuckError('not confirmed')
+        with self.assertRaises(GameStuckError):
+            self.summon()
+        self.task.is_star56.assert_not_called()
+        self.task.config.notifier.push.assert_not_called()
+
+    def test_high_star_notification_uses_confirmed_name(self):
+        self.task.O_MD_FULL_NAME.ocr_single.return_value = '蚀月\n吸血姬'
+        self.task.is_star56.return_value = True
+        self.assertTrue(self.summon())
+        self.task.config.notifier.push.assert_called_once_with(
+            content='召唤到高星鬼王: 蚀月吸血姬', title='超鬼王')
+
+    def test_summon_timeout_stops_before_name_recognition(self):
+        self.task.appear = Mock(return_value=False)
+        self.task.appear_then_click = Mock(return_value=False)
+        with self.assertRaises(GameStuckError):
+            self.summon()
+        self.task.O_MD_FULL_NAME.ocr_single.assert_not_called()
+        self.task.set_strong_pursuit.assert_not_called()
 
 
 class MetaDemonPrepareTests(unittest.TestCase):

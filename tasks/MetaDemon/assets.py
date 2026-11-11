@@ -52,14 +52,16 @@ class MetaDemonAssets:
 	I_ENTER_ENSURE = RuleImage(roi_front=(541,578,186,48), roi_back=(443,555,370,100), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_enter_ensure.png")
 	# 已公开 
 	I_BOOS_PUBLIC = RuleImage(roi_front=(251,155,47,52), roi_back=(228,127,88,90), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_boos_public.png")
+	#  
+	I_STAR6_POS_1 = RuleImage(roi_front=(100,205,8,11), roi_back=(100,205,8,11), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_star6_pos_1.png")
 
 
 	# Image Rule Assets
-	# Non-six-star indicator (match means strong pursuit should be off)
+	# Non-six-star indicator (match means strong pursuit should be off) 
 	I_STAR6 = RuleImage(roi_front=(534,431,14,18), roi_back=(534,431,14,18), threshold=0.9, method="Template matching", file="./tasks/MetaDemon/md/md_star6.png")
-	# Strong pursuit unchecked
+	# Strong pursuit unchecked 
 	I_PURSUIT_OFF = RuleImage(roi_front=(1114,513,24,24), roi_back=(1114,513,24,24), threshold=0.9, method="Template matching", file="./tasks/MetaDemon/md/md_pursuit_off.png")
-	# Strong pursuit checked
+	# Strong pursuit checked 
 	I_PURSUIT_ON = RuleImage(roi_front=(1114,513,24,24), roi_back=(1114,513,24,24), threshold=0.9, method="Template matching", file="./tasks/MetaDemon/md/md_pursuit_on.png")
 
 
@@ -76,4 +78,5 @@ class MetaDemonAssets:
 	O_MD_FULL_NAME = RuleOcr(roi=(479,116,100,217), area=(479,116,100,217), mode="Full", method="Default", keyword="", name="md_full_name")
 	# 判断别人是否给鬼王 
 	O_BOSS_EMPTY_1 = RuleOcr(roi=(141,400,94,32), area=(141,400,94,32), mode="Single", method="Default", keyword="剩余时间", name="boss_empty_1")
+
 

@@ -160,5 +160,14 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "已公开"
+  },
+  {
+    "itemName": "star6_pos_1",
+    "imageName": "md_star6_pos_1.png",
+    "roiFront": "100,205,8,11",
+    "roiBack": "100,205,8,11",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": ""
   }
 ]
