@@ -414,8 +414,8 @@ class MetaDemonSummonTests(unittest.TestCase):
         self.task.set_next_run = Mock()
         with self.assertRaises(TaskEnd):
             self.summon()
-        self.task.ui_click_until_smt_disappear.assert_called_once_with(
-            self.task.C_MD_GIFT_CLOSE, self.task.I_MD_DREAM_GIFT, interval=1)
+        self.task.ui_click_until_smt_disappear.assert_not_called()
+        self.task.ui_click.assert_not_called()
         self.task.set_next_run.assert_called_once_with(task='MetaDemon', success=True)
         self.task.O_MD_FULL_NAME.ocr_single.assert_not_called()
         self.task.set_strong_pursuit.assert_not_called()
@@ -430,6 +430,8 @@ class MetaDemonSummonTests(unittest.TestCase):
         self.task.set_next_run = Mock()
         with self.assertRaises(TaskEnd):
             self.summon()
+        self.task.ui_click_until_smt_disappear.assert_not_called()
+        self.task.ui_click.assert_not_called()
         self.task.set_next_run.assert_called_once_with(task='MetaDemon', success=True)
         self.task.O_MD_FULL_NAME.ocr_single.assert_not_called()
         self.task.set_strong_pursuit.assert_not_called()

@@ -33,7 +33,6 @@ class Star56(GameUi, MetaDemonAssets):
 class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
     # 活动页右下方的式神录入口，基于1280x720活动截图。
     C_MD_RECORDS = RuleClick(roi_front=(1040,628,38,32), roi_back=(1040,628,38,32), name='md_records')
-    C_MD_GIFT_CLOSE = RuleClick(roi_front=(1184,98,36,36), roi_back=(1184,98,36,36), name='md_gift_close')
 
     def run(self):
         self._active_strategy_soul = None
@@ -151,8 +150,8 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
     def check_summon_finished(self):
         if self.appear(self.I_MD_DREAM_GIFT):
             logger.info('Dream gift appeared after summoning, finish MetaDemon')
-            self.ui_click_until_smt_disappear(self.C_MD_GIFT_CLOSE, self.I_MD_DREAM_GIFT, interval=1)
-            self.finish_task()
+            self.set_next_run(task="MetaDemon", success=True)
+            raise TaskEnd
 
     def switch_strategy_soul(self, strategy_key: str) -> bool:
         soul = self.config.meta_demon.get_strategy(strategy_key)
