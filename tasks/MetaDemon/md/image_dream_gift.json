@@ -1,0 +1,11 @@
+[
+  {
+    "itemName": "md_dream_gift",
+    "imageName": "md_dream_gift.png",
+    "roiFront": "580,32,374,111",
+    "roiBack": "570,22,394,131",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "description": "Dream gift after summoning: all demons finished"
+  }
+]

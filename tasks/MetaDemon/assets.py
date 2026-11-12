@@ -80,3 +80,8 @@ class MetaDemonAssets:
 	O_BOSS_EMPTY_1 = RuleOcr(roi=(141,400,94,32), area=(141,400,94,32), mode="Single", method="Default", keyword="剩余时间", name="boss_empty_1")
 
 
+
+
+	# Image Rule Assets
+	# Dream gift after summoning: all demons finished
+	I_MD_DREAM_GIFT = RuleImage(roi_front=(580,32,374,111), roi_back=(570,22,394,131), threshold=0.9, method="Template matching", file="./tasks/MetaDemon/md/md_dream_gift.png")

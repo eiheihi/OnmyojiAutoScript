@@ -4,7 +4,8 @@ from unittest.mock import Mock, patch
 
 from module.exception import TaskEnd, GameStuckError
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
-from tasks.MetaDemon.config import DefaultStrategy, MetaDemon
+from tasks.MetaDemon.config import DefaultStrategy, MetaDemon, NamedStrategy
+from module.config.config_model import ConfigModel
 from tasks.MetaDemon.script_task import ScriptTask
 
 
@@ -47,18 +48,117 @@ class MetaDemonStrategyTests(unittest.TestCase):
                 'md_preset_group_team_default_2': '4,2',
             },
         })
-        self.assertEqual(config.md_default_strategy.get_group_team(), [3, 2])
-        self.assertEqual(len(config.model_dump()['md_default_strategy']), 4)
+        self.assertEqual(config.get_group_team(), [3, 2])
+        self.assertEqual(config.meta_demon_config.md_strategy_count, 3)
+        self.assertNotIn('md_default_strategy', config.model_dump())
         self.assertEqual(MetaDemon.model_validate(config.model_dump()), config)
+
+
+class ExtensibleStrategyTests(unittest.TestCase):
+    def test_legacy_presets_and_souls_migrate_together(self):
+        config = MetaDemon.model_validate({
+            'md_default_strategy': {
+                'md_preset_group_team_default_1': '2,1',
+                'md_preset_group_team_tsukuyomi': '3,2',
+                'md_preset_group_team_shuten': '4,3',
+                'md_preset_group_team_kidomaru': '5,4',
+            },
+            'md_soul_default': {'enable': True, 'switch_group_team': '1,2'},
+            'md_soul_tsukuyomi': {'enable_switch_by_name': True, 'group_name': '月读组', 'team_name': '输出'},
+            'md_soul_shuten': {'enable': True, 'switch_group_team': '2,3'},
+            'md_soul_kidomaru': {'enable': True, 'switch_group_team': '3,4'},
+        })
+        for name, team in [('月读', [3, 2]), ('雪御前', [3, 2]), ('酒吞童子', [4, 3]), ('修罗鬼童丸', [5, 4])]:
+            self.assertEqual(config.get_group_team(name, True), team)
+        self.assertEqual(config.md_default_group.switch_group_team, '1,2')
+        self.assertEqual(config.md_strategy_list[0].group_name, '月读组')
+        self.assertTrue(config.md_strategy_list[0].enable_switch_by_name)
+        self.assertEqual(config.md_strategy_list[1].switch_group_team, '2,3')
+        self.assertEqual(config.md_strategy_list[2].switch_group_team, '3,4')
+        self.assertEqual(MetaDemon.model_validate(config.model_dump()), config)
+
+    def test_chinese_names_and_separators(self):
+        group = NamedStrategy(md_boss_names='月读，雪御前、酒吞童子；鬼童丸\n大天狗')
+        for name in ('月读', '雪御前', '酒吞童子', '鬼童丸', '大天狗'):
+            self.assertTrue(group.matches(name))
+        self.assertFalse(group.matches('童丸'))
+
+    def test_fresh_config_has_only_default_group(self):
+        config = MetaDemon()
+        self.assertFalse(NamedStrategy().md_strong_pursuit)
+        self.assertEqual(config.meta_demon_config.md_strategy_count, 0)
+        self.assertEqual(config.get_strategy_key('boss', True), 'default')
+        self.assertEqual(config.get_group_team(), [1, 1])
+
+    def test_custom_names_priority_and_default(self):
+        config = MetaDemon(meta_demon_config={'md_strategy_count': 5})
+        config.ensure_groups()
+        config.md_default_group.md_preset_group_team = '2,1'
+        config.md_strategy_list[0].md_boss_names = ' Alpha, Beta ; Gamma'
+        config.md_strategy_list[0].md_preset_group_team = '3,2'
+        config.md_strategy_list[4].md_boss_names = 'Alpha,Delta'
+        config.md_strategy_list[4].md_preset_group_team = '4,3'
+        for name in ('Alpha', ' B e t a ', 'Gamma'):
+            self.assertEqual(config.get_group_team(name, True), [3, 2])
+        self.assertEqual(config.get_group_team('Delta', True), [4, 3])
+        for name in ('', None, 'Alph', 'Other'):
+            self.assertEqual(config.get_group_team(name, True), [2, 1])
+        self.assertEqual(config.get_group_team('Alpha', False), [2, 1])
+        self.assertEqual(MetaDemon.model_validate(config.model_dump()), config)
+
+    def test_count_hides_but_preserves_groups(self):
+        config = MetaDemon(meta_demon_config={'md_strategy_count': 4})
+        config.ensure_groups()
+        config.md_strategy_list[3].md_boss_names = 'Saved'
+        config.meta_demon_config.md_strategy_count = 1
+        self.assertNotIn('md_strategy_list_4', config.model_dump(context={'hide': True}))
+        config = MetaDemon.model_validate(config.model_dump())
+        self.assertEqual(config.get_strategy_key('Saved', True), 'default')
+        config.meta_demon_config.md_strategy_count = 4
+        self.assertEqual(config.get_strategy_key('Saved', True), 'md_strategy_list_4')
+
+    def test_gui_reads_and_saves_new_group_and_roundtrips(self):
+        model = ConfigModel()
+        with patch.object(ConfigModel, 'save') as save:
+            self.assertTrue(model.script_set_arg('MetaDemon', 'meta_demon_config', 'md_strategy_count', 5))
+            args = model.script_task('MetaDemon')
+            self.assertIn('md_default_group', args)
+            self.assertIn('md_strategy_list_5', args)
+            self.assertNotIn('md_strong_pursuit', [arg['name'] for arg in args['md_default_group']])
+            self.assertIn('md_strong_pursuit', [arg['name'] for arg in args['md_strategy_list_5']])
+            self.assertNotIn('md_soul_tsukuyomi', args)
+            for field, value in [('md_boss_names', 'NewBoss'), ('md_preset_group_team', '6,5'),
+                                 ('enable', True), ('switch_group_team', '3,4'), ('md_strong_pursuit', True)]:
+                self.assertTrue(model.script_set_arg('MetaDemon', 'md_strategy_list_5', field, value))
+            self.assertTrue(save.called)
+        restored = MetaDemon.model_validate(model.meta_demon.model_dump())
+        self.assertEqual(restored.get_group_team('NewBoss', True), [6, 5])
+        self.assertEqual(restored.get_strategy('md_strategy_list_5').switch_group_team, '3,4')
+        self.assertTrue(restored.get_strategy('md_strategy_list_5').enable)
+        self.assertTrue(restored.get_strategy('md_strategy_list_5').md_strong_pursuit)
+
+    def test_custom_group_switches_its_own_soul(self):
+        config = MetaDemon(meta_demon_config={'md_strategy_count': 5})
+        config.ensure_groups()
+        config.md_strategy_list[4].enable = True
+        config.md_strategy_list[4].switch_group_team = '4,2'
+        task = ScriptTask.__new__(ScriptTask)
+        task.config = SimpleNamespace(meta_demon=config)
+        task.ui_click = Mock()
+        task.return_from_records = Mock()
+        task.run_switch_soul = Mock()
+        self.assertTrue(task.switch_strategy_soul('md_strategy_list_5'))
+        task.run_switch_soul.assert_called_once_with((4, 2))
+        self.assertFalse(task.switch_strategy_soul('md_strategy_list_5'))
 
 
 class MetaDemonSoulTests(unittest.TestCase):
     def setUp(self):
-        self.config = MetaDemon()
-        self.config.md_soul_default.enable = True
-        self.config.md_soul_default.switch_group_team = '1,1'
-        self.config.md_soul_tsukuyomi.enable = True
-        self.config.md_soul_tsukuyomi.switch_group_team = '2,3'
+        self.config = MetaDemon.model_validate({'md_default_strategy': {}})
+        self.config.md_default_group.enable = True
+        self.config.md_default_group.switch_group_team = '1,1'
+        self.config.md_strategy_list[0].enable = True
+        self.config.md_strategy_list[0].switch_group_team = '2,3'
         self.task = ScriptTask.__new__(ScriptTask)
         self.task.config = SimpleNamespace(meta_demon=self.config)
         self.task.ui_click = Mock()
@@ -70,8 +170,8 @@ class MetaDemonSoulTests(unittest.TestCase):
 
     def test_switch_special_then_restore_default_and_skip_repeats(self):
         self.assertTrue(self.task.switch_strategy_soul('default'))
-        self.assertTrue(self.task.switch_strategy_soul('tsukuyomi'))
-        self.assertFalse(self.task.switch_strategy_soul('tsukuyomi'))
+        self.assertTrue(self.task.switch_strategy_soul('md_strategy_list_1'))
+        self.assertFalse(self.task.switch_strategy_soul('md_strategy_list_1'))
         self.assertTrue(self.task.switch_strategy_soul('default'))
         self.assertEqual([c.args[0] for c in self.task.run_switch_soul.call_args_list],
                          [(1, 1), (2, 3), (1, 1)])
@@ -81,22 +181,22 @@ class MetaDemonSoulTests(unittest.TestCase):
         self.assertIs(self.task.ui_click.call_args.args[0], self.task.C_MD_RECORDS)
 
     def test_name_switch_takes_precedence(self):
-        soul = self.config.md_soul_tsukuyomi
+        soul = self.config.md_strategy_list[0]
         soul.enable_switch_by_name = True
         soul.group_name = ' group '
         soul.team_name = ' team '
-        self.assertTrue(self.task.switch_strategy_soul('tsukuyomi'))
+        self.assertTrue(self.task.switch_strategy_soul('md_strategy_list_1'))
         self.task.run_switch_soul_by_name.assert_called_once_with('group', 'team')
         self.task.run_switch_soul.assert_not_called()
 
     def test_disabled_soul_stays_in_activity(self):
-        self.assertFalse(self.task.switch_strategy_soul('shuten'))
+        self.assertFalse(self.task.switch_strategy_soul('md_strategy_list_2'))
         self.task.ui_click.assert_not_called()
 
     def test_invalid_soul_fails_before_leaving_activity(self):
-        self.config.md_soul_tsukuyomi.switch_group_team = '1,5'
+        self.config.md_strategy_list[0].switch_group_team = '1,5'
         with self.assertRaises(ValueError):
-            self.task.switch_strategy_soul('tsukuyomi')
+            self.task.switch_strategy_soul('md_strategy_list_1')
         self.task.ui_click.assert_not_called()
 
     def test_failed_switch_does_not_cache_success(self):
@@ -109,8 +209,8 @@ class MetaDemonSoulTests(unittest.TestCase):
 
     def test_return_from_switch_reidentifies_boss_before_battle(self):
         self.config.meta_demon_config.md_use_strategy = True
-        self.config.md_default_strategy.md_preset_group_team_default_1 = '3,1'
-        self.config.md_default_strategy.md_preset_group_team_tsukuyomi = '3,2'
+        self.config.md_default_group.md_preset_group_team = '3,1'
+        self.config.md_strategy_list[0].md_preset_group_team = '3,2'
         self.task.device = SimpleNamespace(image=None)
         self.task.screenshot = Mock()
         visible = (self.task.I_FIND_DEMON, self.task.I_BOSS_CONVENE, self.task.I_BATTLE_DEMON)
@@ -126,14 +226,15 @@ class MetaDemonSoulTests(unittest.TestCase):
             self.task.run_demons()
         self.task.battle_boss.assert_called_once_with(3, 1)
         self.assertEqual([c.args[0] for c in self.task.switch_strategy_soul.call_args_list],
-                         ['tsukuyomi', 'default'])
+                         ['md_strategy_list_1', 'default'])
 
 
 class MetaDemonPursuitTests(unittest.TestCase):
     def setUp(self):
         self.task = ScriptTask.__new__(ScriptTask)
+        self.config = MetaDemon.model_validate({'md_default_strategy': {}})
+        self.task.config = SimpleNamespace(meta_demon=self.config)
         self.now = 100.0
-        self.six_star = True
         self.enabled = False
         self.unknown = False
         self.ignored_clicks = 0
@@ -147,8 +248,6 @@ class MetaDemonPursuitTests(unittest.TestCase):
     def appear(self, rule):
         if rule is self.task.I_BATTLE_DEMON:
             return True
-        if rule is self.task.I_STAR6_POS_1:
-            return self.six_star
         if rule is self.task.I_PURSUIT_ON:
             return self.enabled and not self.unknown
         if rule is self.task.I_PURSUIT_OFF:
@@ -170,22 +269,22 @@ class MetaDemonPursuitTests(unittest.TestCase):
                 patch('tasks.MetaDemon.script_task.sleep', side_effect=self.advance):
             self.task.set_strong_pursuit()
 
-    def test_six_star_enables_then_non_six_star_disables(self):
+    def test_high_star_enables_then_low_star_disables(self):
         self.sync()
         self.assertTrue(self.enabled)
-        self.six_star = False
+        self.task.is_star56.return_value = False
         self.sync()
         self.assertFalse(self.enabled)
         self.assertEqual(self.clicks, [self.task.I_PURSUIT_OFF, self.task.I_PURSUIT_ON])
 
     def test_correct_state_does_not_toggle(self):
-        for six_star in (True, False):
-            self.six_star = self.enabled = six_star
+        for high_star in (True, False):
+            self.enabled = high_star
+            self.task.is_star56.return_value = high_star
             self.sync()
         self.assertEqual(self.clicks, [])
 
     def test_all_special_names_enable_five_star_pursuit(self):
-        self.six_star = False
         for name in ('月读', '雪御前', '酒吞童子', '鬼王酒吞童子', '修罗鬼童丸', '鬼童丸'):
             with self.subTest(name=name):
                 self.enabled = False
@@ -193,21 +292,49 @@ class MetaDemonPursuitTests(unittest.TestCase):
                 self.sync()
                 self.assertTrue(self.enabled)
 
+    def test_custom_switch_off_disables_high_star(self):
+        self.task.recognize_boss_name.return_value = '月读'
+        self.config.md_strategy_list[0].md_strong_pursuit = False
+        self.enabled = True
+        self.sync()
+        self.assertFalse(self.enabled)
+
+    def test_arbitrary_custom_group_switch_controls_high_star(self):
+        self.config.md_strategy_list[0].md_boss_names = '自定义鬼王'
+        self.task.recognize_boss_name.return_value = '自定义鬼王'
+        for enable in (True, False):
+            with self.subTest(enable=enable):
+                self.config.md_strategy_list[0].md_strong_pursuit = enable
+                self.sync()
+                self.assertEqual(self.enabled, enable)
+
+    def test_default_group_enables_high_star(self):
+        self.config.meta_demon_config.md_strategy_count = 0
+        self.task.recognize_boss_name.return_value = '月读'
+        self.sync()
+        self.assertTrue(self.enabled)
+        self.sync()
+        self.assertTrue(self.enabled)
+
+    def test_pursuit_is_independent_of_preset_switch(self):
+        self.config.meta_demon_config.md_use_strategy = False
+        self.task.recognize_boss_name.return_value = '月读'
+        self.sync()
+        self.assertTrue(self.enabled)
+
     def test_low_star_special_name_does_not_enable_pursuit(self):
-        self.six_star = False
         self.task.is_star56.return_value = False
         self.task.recognize_boss_name.return_value = '月读'
         self.sync()
         self.assertFalse(self.enabled)
         self.assertEqual(self.clicks, [])
 
-    def test_special_then_ordinary_five_star_disables_pursuit(self):
-        self.six_star = False
+    def test_special_then_ordinary_five_star_keeps_pursuit(self):
         self.task.recognize_boss_name.side_effect = [' 月\n读 ', '大天狗']
         self.sync()
         self.assertTrue(self.enabled)
         self.sync()
-        self.assertFalse(self.enabled)
+        self.assertTrue(self.enabled)
 
     def test_unrecognized_boss_prevents_challenge(self):
         self.task.recognize_boss_name.side_effect = GameStuckError('name not confirmed')
@@ -252,7 +379,7 @@ class MetaDemonPursuitTests(unittest.TestCase):
 
     def test_unstable_star_detection_never_releases_challenge(self):
         def screenshot():
-            self.six_star = not self.six_star
+            self.task.is_star56.return_value = not self.task.is_star56.return_value
 
         self.task.screenshot.side_effect = screenshot
         with self.assertRaises(GameStuckError):
@@ -279,6 +406,33 @@ class MetaDemonSummonTests(unittest.TestCase):
         with patch('module.base.timer.time.time', side_effect=lambda: self.now), \
                 patch('tasks.MetaDemon.script_task.sleep', side_effect=self.advance):
             return self.task.find_demon()
+
+    def test_dream_gift_finishes_task_before_recognition(self):
+        self.task.appear = lambda rule: rule is self.task.I_MD_DREAM_GIFT
+        self.task.ui_click_until_smt_disappear = Mock()
+        self.task.ui_click = Mock()
+        self.task.set_next_run = Mock()
+        with self.assertRaises(TaskEnd):
+            self.summon()
+        self.task.ui_click_until_smt_disappear.assert_called_once_with(
+            self.task.C_MD_GIFT_CLOSE, self.task.I_MD_DREAM_GIFT, interval=1)
+        self.task.set_next_run.assert_called_once_with(task='MetaDemon', success=True)
+        self.task.O_MD_FULL_NAME.ocr_single.assert_not_called()
+        self.task.set_strong_pursuit.assert_not_called()
+        self.task.config.notifier.push.assert_not_called()
+
+    def test_delayed_dream_gift_finishes_during_name_recognition(self):
+        self.task.appear = lambda rule: rule is (
+            self.task.I_MD_DREAM_GIFT if self.task.screenshot.call_count >= 2
+            else self.task.I_BATTLE_DEMON)
+        self.task.ui_click_until_smt_disappear = Mock()
+        self.task.ui_click = Mock()
+        self.task.set_next_run = Mock()
+        with self.assertRaises(TaskEnd):
+            self.summon()
+        self.task.set_next_run.assert_called_once_with(task='MetaDemon', success=True)
+        self.task.O_MD_FULL_NAME.ocr_single.assert_not_called()
+        self.task.set_strong_pursuit.assert_not_called()
 
     def test_low_star_also_recognizes_name_then_confirms_pursuit(self):
         self.task.O_MD_FULL_NAME.ocr_single.side_effect = ['', '吸血姬', '', '吸血姬', '吸血姬']

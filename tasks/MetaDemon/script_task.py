@@ -16,7 +16,7 @@ from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.GameUi.game_ui import GameUi
-from tasks.MetaDemon.config import DefaultStrategy, Strategy
+from tasks.MetaDemon.config import Strategy
 from tasks.MetaDemon.assets import MetaDemonAssets
 
 
@@ -33,6 +33,7 @@ class Star56(GameUi, MetaDemonAssets):
 class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
     # 活动页右下方的式神录入口，基于1280x720活动截图。
     C_MD_RECORDS = RuleClick(roi_front=(1040,628,38,32), roi_back=(1040,628,38,32), name='md_records')
+    C_MD_GIFT_CLOSE = RuleClick(roi_front=(1184,98,36,36), roi_back=(1184,98,36,36), name='md_gift_close')
 
     def run(self):
         self._active_strategy_soul = None
@@ -120,9 +121,9 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
                     if is_hard_boss:
                         detect_name = self.O_MD_FULL_NAME.ocr_single(self.device.image) or ''
                         logger.info(f'detect_full_name: {detect_name}')
-                    target_group_team = self.config.meta_demon.md_default_strategy.get_group_team(
+                    target_group_team = self.config.meta_demon.get_group_team(
                         detect_name, is_hard_boss)
-                    strategy_key = self.config.meta_demon.md_default_strategy.get_strategy_key(
+                    strategy_key = self.config.meta_demon.get_strategy_key(
                         detect_name, is_hard_boss)
                     if self.switch_strategy_soul(strategy_key):
                         # 离开期间目标可能消失，返回后重新选择和识别，不能直接攻击旧目标。
@@ -138,14 +139,23 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
                 boss_timer.reset()
                 continue
 
+        self.finish_task()
+
+    def finish_task(self):
         # 退出
         self.ui_click(self.I_UI_BACK_YELLOW, self.I_CHECK_MAIN, interval=1.4)
         logger.info('Exit MetaDemon')
         self.set_next_run(task="MetaDemon", success=True)
         raise TaskEnd
 
+    def check_summon_finished(self):
+        if self.appear(self.I_MD_DREAM_GIFT):
+            logger.info('Dream gift appeared after summoning, finish MetaDemon')
+            self.ui_click_until_smt_disappear(self.C_MD_GIFT_CLOSE, self.I_MD_DREAM_GIFT, interval=1)
+            self.finish_task()
+
     def switch_strategy_soul(self, strategy_key: str) -> bool:
-        soul = getattr(self.config.meta_demon, f'md_soul_{strategy_key}')
+        soul = self.config.meta_demon.get_strategy(strategy_key)
         if soul.enable_switch_by_name:
             group_name, team_name = soul.group_name.strip(), soul.team_name.strip()
             if not group_name or not team_name:
@@ -268,6 +278,7 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
         timer = Timer(30).start()
         while not timer.reached():
             self.screenshot()
+            self.check_summon_finished()
             if self.appear(self.I_BATTLE_DEMON) and not self.appear(self.I_BOSS_EMPTY):
                 break
             if self.appear_then_click(self.I_FIND_DEMON, interval=3.5):
@@ -292,6 +303,7 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
         sleep(1)  # 等待召唤展示动画，不能直接读取召唤按钮消失时的过渡帧。
         while not timer.reached():
             self.screenshot()
+            self.check_summon_finished()
             name = ''
             if self.appear(self.I_BATTLE_DEMON) and not self.appear(self.I_BOSS_EMPTY):
                 name = ''.join((self.O_MD_FULL_NAME.ocr_single(self.device.image) or '').split())
@@ -323,11 +335,10 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
             return True if success else False
 
     def set_strong_pursuit(self, detect_name: str = None):
-        """六星及特殊名单内的五星鬼王开启强追，确认开关后才继续。"""
+        """自定义组按开关强追，默认组五、六星强追，确认开关后才继续。"""
         # 挑战前重新识别当前目标，不依赖阵容切换开关，也不复用上一次鬼王的名字。
         if detect_name is None:
             detect_name = self.recognize_boss_name()
-        special_boss = DefaultStrategy.get_strategy_key(detect_name, True) != 'default'
         timer = Timer(15).start()
         previous = None
         stable_count = 0
@@ -339,16 +350,18 @@ class ScriptTask(RightActivity, GeneralBattle, SwitchSoul, Star56):
                 stable_count = 0
                 sleep(0.3)
                 continue
-            six_star = self.appear(self.I_STAR6_POS_1)
-            enable = six_star or special_boss
+            is_hard_boss = self.is_star56()
+            strategy_key = self.config.meta_demon.get_strategy_key(
+                detect_name, is_hard_boss)
+            enable = (is_hard_boss if strategy_key == 'default' else
+                      self.config.meta_demon.get_strategy(strategy_key).md_strong_pursuit)
             is_on = self.appear(self.I_PURSUIT_ON)
             is_off = self.appear(self.I_PURSUIT_OFF)
-            state = (enable, is_on, is_off)
+            state = (strategy_key, is_hard_boss, enable, is_on, is_off)
             stable_count = stable_count + 1 if state == previous else 1
             if state != previous:
-                logger.info(f'Strong pursuit detection: boss={detect_name}, special={special_boss}, '
-                            f'six_star={six_star}, target={enable}, on={is_on}, off={is_off}, '
-                            f'star_template_score={self.I_STAR6_POS_1.last_score:.3f}')
+                logger.info(f'Strong pursuit detection: boss={detect_name}, group={strategy_key}, '
+                            f'star56={is_hard_boss}, target={enable}, on={is_on}, off={is_off}')
             previous = state
             # 星级与开关均连续三帧一致才操作；点击后重新累计三帧确认，不能点击即放行。
             if stable_count >= 3 and is_on != is_off:
